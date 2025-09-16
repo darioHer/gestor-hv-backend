@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmConfig } from './config/orm.config';
 import { DocenteModule } from './module/docentes/docente.module';
 import { ConvocatoriaModule } from './module/convocatorias/convocatoria.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 
 @Module({
@@ -13,6 +14,7 @@ import { ConvocatoriaModule } from './module/convocatorias/convocatoria.module';
       inject: [ConfigService],
       useFactory: typeOrmConfig,
     }),
+    ScheduleModule.forRoot(),
     DocenteModule,
     ConvocatoriaModule,
   

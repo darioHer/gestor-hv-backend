@@ -22,6 +22,9 @@ export class Convocatoria {
     @Column('text', { nullable: true })
     requisitos: string;
 
+    @Column({ type: 'enum', enum: ['abierta', 'cerrada'], default: 'abierta' })
+estado: 'abierta' | 'cerrada';
+
     @OneToMany(() => Postulacion, (p) => p.convocatoria)
     postulaciones: Postulacion[];
 }
