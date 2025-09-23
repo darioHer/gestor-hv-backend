@@ -26,7 +26,7 @@ export class ConvocatoriaController {
         return this.service.remove(id);
     }
 
-    // 👉 Nuevo endpoint para cerrar convocatoria
+    // Nuevo endpoint para cerrar convocatoria
     @Patch(':id/cerrar')
     cerrar(@Param('id', ParseIntPipe) id: number) {
         return this.service.cerrarConvocatoria(id);

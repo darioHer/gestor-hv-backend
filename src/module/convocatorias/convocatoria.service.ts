@@ -48,10 +48,10 @@ async update(id: number, dto: Partial<CreateConvocatoriaDto>) {
   return this.repo.save(convocatoria);
 }
 
-// 👉 Automático con CRON (se ejecuta todos los días a medianoche)
+// Automático con CRON (se ejecuta todos los días a medianoche)
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async cerrarConvocatoriasExpiradas() {
-    const hoy = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const hoy = new Date().toISOString().slice(0, 10); 
     const convocatorias = await this.repo.find({
       where: {
         fechaCierre: LessThan(hoy),
@@ -65,7 +65,8 @@ async update(id: number, dto: Partial<CreateConvocatoriaDto>) {
         await this.repo.save(c);
       }
       console.log(`🔒 ${convocatorias.length} convocatorias cerradas automáticamente`);
-    } 
-}
- 
+    } else {
+      console.log('⏳ No hay convocatorias pendientes de cierre')
+    }
+  }
 }
