@@ -2,8 +2,9 @@ import { Module, Post } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmConfig } from './config/orm.config';
-import { DocenteModule } from './module/docentes/docente.module';
-import { ConvocatoriaModule } from './module/convocatorias/convocatoria.module';
+import { AuthModule } from './module/auth/auth.module';
+import { AdminModule } from './module/admin/admin.module';
+import { EvaluacionModule } from './module/evaluacion/evaluacion.module';
 
 
 @Module({
@@ -13,9 +14,12 @@ import { ConvocatoriaModule } from './module/convocatorias/convocatoria.module';
       inject: [ConfigService],
       useFactory: typeOrmConfig,
     }),
-    DocenteModule,
-    ConvocatoriaModule,
+
+    AuthModule,
+    AdminModule,
+    EvaluacionModule
   
+    
   ],
 })
 export class AppModule {}
