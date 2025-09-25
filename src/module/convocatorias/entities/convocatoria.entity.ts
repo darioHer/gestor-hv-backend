@@ -1,5 +1,5 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { Postulacion } from './postulacion.entity';
+import { Postulacion } from '../../postulacion/entities/postulacion.entity';
 
 
 @Entity('convocatorias')

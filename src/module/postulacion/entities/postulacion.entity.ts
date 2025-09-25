@@ -1,6 +1,7 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { Convocatoria } from './convocatoria.entity';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
+import { Convocatoria } from '../../convocatorias/entities/convocatoria.entity';
 import { Docente } from 'src/module/docentes/entities/docente.entity';
+import { HistorialPostulacion } from './historial-postulacion.entity';
 
 
 @Entity('postulaciones')
@@ -19,4 +20,9 @@ export class Postulacion {
 
     @ManyToOne(() => Docente, { eager: true })
     docente: Docente;
+
+    @OneToMany(() => HistorialPostulacion, (h) => h.postulacion, { cascade: true })
+historial: HistorialPostulacion[];
+
+    
 }
