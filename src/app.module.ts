@@ -12,8 +12,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: typeOrmConfig,
-    }),
+      useFactory: typeOrmConfig,}),
     ScheduleModule.forRoot(),
     DocenteModule,
     ConvocatoriaModule,

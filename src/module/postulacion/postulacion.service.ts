@@ -93,11 +93,11 @@ private historialRepo: Repository<HistorialPostulacion>,
     );
   }
 
-  // ✅ actualizar estado actual
+  //  actualizar estado actual
   postulacion.estado = nuevoEstado;
   await this.repo.save(postulacion);
 
-  // ✅ crear registro en historial
+  //  crear registro en historial
   const historial = this.historialRepo.create({
     estado: nuevoEstado,
     postulacion,
