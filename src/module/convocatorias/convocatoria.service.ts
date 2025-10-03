@@ -3,7 +3,8 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { Convocatoria } from './entities/convocatoria.entity';
-import { CreateConvocatoriaDto } from './dto/create-convocatoria.dto';
+import { CreateConvocatoriaDto } from './dtos/create-convocatoria.dto';
+
 
 
 @Injectable()
