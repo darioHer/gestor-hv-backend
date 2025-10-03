@@ -1,21 +1,20 @@
-import { Module, Post } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { typeOrmConfig } from './config/orm.config';
-import { DocenteModule } from './module/docentes/docente.module';
-import { ConvocatoriaModule } from './module/convocatorias/convocatoria.module';
-
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { DocenteModule } from './docente/docente.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: typeOrmConfig,
+    TypeOrmModule.forRoot({
+      type: 'sqlite', // o postgres/mysql, según uses
+      database: 'db.sqlite',
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: true,
     }),
     DocenteModule,
-    ConvocatoriaModule,
-  
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
