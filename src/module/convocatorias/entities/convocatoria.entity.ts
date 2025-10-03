@@ -1,5 +1,5 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { Postulacion } from './postulacion.entity';
+import { Postulacion } from '../../postulacion/entities/postulacion.entity';
 
 
 @Entity('convocatorias')
@@ -21,6 +21,9 @@ export class Convocatoria {
 
     @Column('text', { nullable: true })
     requisitos: string;
+
+    @Column({ type: 'enum', enum: ['abierta', 'cerrada'], default: 'abierta' })
+estado: 'abierta' | 'cerrada';
 
     @OneToMany(() => Postulacion, (p) => p.convocatoria)
     postulaciones: Postulacion[];

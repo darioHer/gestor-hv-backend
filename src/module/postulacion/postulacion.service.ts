@@ -1,44 +1,111 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-
+import { Postulacion } from './entities/postulacion.entity';
+import { CreatePostulacionDto } from './dto/create-postulacion.dto';
 import { Docente } from '../docentes/entities/docente.entity';
-import { Postulacion } from '../convocatorias/entities/postulacion.entity';
 import { Convocatoria } from '../convocatorias/entities/convocatoria.entity';
-import { CreatePostulacionDto } from '../convocatorias/dto/create-postulacion.dto';
+import { HistorialPostulacion } from './entities/historial-postulacion.entity';
 
 
 @Injectable()
 export class PostulacionService {
-    constructor(
-        @InjectRepository(Postulacion) private repo: Repository<Postulacion>,
-        @InjectRepository(Convocatoria) private convRepo: Repository<Convocatoria>,
-        @InjectRepository(Docente) private docRepo: Repository<Docente>,
-    ) { }
+  constructor(
+    @InjectRepository(Postulacion) private repo: Repository<Postulacion>,
+    @InjectRepository(Docente) private docenteRepo: Repository<Docente>,
+    @InjectRepository(Convocatoria) private convocatoriaRepo: Repository<Convocatoria>,
+    @InjectRepository(HistorialPostulacion)
+private historialRepo: Repository<HistorialPostulacion>,
+  ) {}
 
-    async create(dto: CreatePostulacionDto) {
-        const docente = await this.docRepo.findOne({ where: { id: dto.docenteId } });
-        if (!docente) throw new NotFoundException('Docente no encontrado');
+  async create(dto: CreatePostulacionDto) {
+    const docente = await this.docenteRepo.findOne({ where: { id: dto.docenteId } });
+    const convocatoria = await this.convocatoriaRepo.findOne({ where: { id: dto.convocatoriaId } });
 
-        const convocatoria = await this.convRepo.findOne({ where: { id: dto.convocatoriaId } });
-        if (!convocatoria) throw new NotFoundException('Convocatoria no encontrada');
+    if (!docente) throw new NotFoundException('Docente no encontrado');
+    if (!convocatoria) throw new NotFoundException('Convocatoria no encontrada');
 
-        const postulacion = this.repo.create({
-            docente,
-            convocatoria,
-            programaObjetivo: dto.programaObjetivo,
-        });
-        return this.repo.save(postulacion);
+    // Validar duplicados, ahora con relaciones explícitas
+    const existente = await this.repo.findOne({
+      where: {
+        docente: { id: dto.docenteId },
+        convocatoria: { id: dto.convocatoriaId },
+      },
+      relations: ['docente', 'convocatoria'],
+    });
+
+    if (existente) {
+      throw new BadRequestException(
+        'Ya existe una postulación para este docente en esta convocatoria',
+      );
     }
 
-    findAll() {
-        return this.repo.find({ relations: { convocatoria: true } });
-    }
+    const postulacion = this.repo.create({
+      programaObjetivo: dto.programaObjetivo,
+      docente,
+      convocatoria,
+    });
 
-    findByConvocatoria(convocatoriaId: number) {
-        return this.repo.find({
-            where: { convocatoria: { id: convocatoriaId } },
-            relations: { docente: true },
-        });
-    }
+    return this.repo.save(postulacion);
+  }
+
+  findAll() {
+    return this.repo.find({ relations: ['convocatoria', 'docente'] });
+  }
+
+  async findByConvocatoria(convocatoriaId: number) {
+    const convocatoria = await this.convocatoriaRepo.findOne({ where: { id: convocatoriaId } });
+    if (!convocatoria) throw new NotFoundException('Convocatoria no encontrada');
+
+    return this.repo.find({
+      where: { convocatoria: { id: convocatoriaId } },
+      relations: ['docente', 'convocatoria'],
+    });
+  }
+
+  async findOneWithHistorial(id: number) {
+  const postulacion = await this.repo.findOne({
+    where: { id },
+    relations: ['historial'],
+  });
+
+  if (!postulacion) {
+    throw new NotFoundException('Postulación no encontrada');
+  }
+
+  return postulacion;
+}
+
+  async updateEstado(id: number, nuevoEstado: string) {
+  const postulacion = await this.repo.findOne({
+    where: { id },
+    relations: ['docente', 'convocatoria'],
+  });
+
+  if (!postulacion) {
+    throw new NotFoundException('Postulación no encontrada');
+  }
+
+  const estadosPermitidos = ['enviada', 'en_evaluacion', 'aprobada', 'rechazada'];
+  if (!estadosPermitidos.includes(nuevoEstado)) {
+    throw new BadRequestException(
+      `Estado inválido. Solo se permiten: ${estadosPermitidos.join(', ')}`,
+    );
+  }
+
+  //  actualizar estado actual
+  postulacion.estado = nuevoEstado;
+  await this.repo.save(postulacion);
+
+  //  crear registro en historial
+  const historial = this.historialRepo.create({
+    estado: nuevoEstado,
+    postulacion,
+  });
+  await this.historialRepo.save(historial);
+
+  return postulacion;
+}
+
+
 }
