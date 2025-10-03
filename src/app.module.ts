@@ -1,4 +1,10 @@
 import { Module } from '@nestjs/common';
+<<<<<<< HEAD
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { DocenteModule } from './docente/docente.module';
+=======
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmConfig } from './config/orm.config';
@@ -12,24 +18,31 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './module/auth/auth.module';
 import { AdminModule } from './module/admin/admin.module';
 import { EvaluacionModule } from './module/evaluacion/evaluacion.module';
+>>>>>>> master
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: typeOrmConfig,
+    TypeOrmModule.forRoot({
+      type: 'sqlite', // o postgres/mysql, según uses
+      database: 'db.sqlite',
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: true,
     }),
 
     // Módulos de Harold
     ScheduleModule.forRoot(),
     DocenteModule,
+<<<<<<< HEAD
+=======
     ConvocatoriaModule,
 
     // Módulos de Darío
     AuthModule,
     AdminModule,
     EvaluacionModule,
+>>>>>>> master
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
