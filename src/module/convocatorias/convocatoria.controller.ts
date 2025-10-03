@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
 import { ConvocatoriaService } from './convocatoria.service';
-import { CreateConvocatoriaDto } from './dto/create-convocatoria.dto';
+import { CreateConvocatoriaDto } from './dtos/create-convocatoria.dto';
+
 
 @Controller('convocatorias')
 export class ConvocatoriaController {

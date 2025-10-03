@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Patch } from '@nestjs/common';
 import { PostulacionService } from './postulacion.service';
 import { CreatePostulacionDto } from './dto/create-postulacion.dto';
- 
 
 @Controller('postulaciones')
 export class PostulacionController {

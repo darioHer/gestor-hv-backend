@@ -1,46 +1,37 @@
 import { Module } from '@nestjs/common';
-<<<<<<< HEAD
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { DocenteModule } from './docente/docente.module';
-=======
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { typeOrmConfig } from './config/orm.config';
 
-// Tus módulos
+// Módulos de dominio
 import { DocenteModule } from './module/docentes/docente.module';
 import { ConvocatoriaModule } from './module/convocatorias/convocatoria.module';
-import { ScheduleModule } from '@nestjs/schedule';
 
-// Nuevos módulos de master (Darío)
-import { AuthModule } from './module/auth/auth.module';
-import { AdminModule } from './module/admin/admin.module';
 import { EvaluacionModule } from './module/evaluacion/evaluacion.module';
->>>>>>> master
+import { AdminModule } from './module/admin/admin.module';
+import { AuthModule } from './module/auth/auth.module';
+
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { PostulacionModule } from './module/postulacion/postulacion.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'sqlite', // o postgres/mysql, según uses
-      database: 'db.sqlite',
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true,
+    ConfigModule.forRoot({ isGlobal: true }),
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => typeOrmConfig(config),
     }),
-
-    // Módulos de Harold
     ScheduleModule.forRoot(),
-    DocenteModule,
-<<<<<<< HEAD
-=======
-    ConvocatoriaModule,
 
-    // Módulos de Darío
-    AuthModule,
-    AdminModule,
+    // dominios
+    DocenteModule,
+    ConvocatoriaModule,
+    PostulacionModule,  // asegúrate de exponer service/controller aquí
     EvaluacionModule,
->>>>>>> master
+    AdminModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

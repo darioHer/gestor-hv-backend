@@ -1,6 +1,7 @@
 import { Column, Entity, OneToMany, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { ItemEvaluacion } from './item-evaluacion.entity';
-import { Postulacion } from '../convocatoria/entities/postulacion.entity';
+import { Postulacion } from 'src/module/postulacion/entities/postulacion.entity';
+
 
 @Entity('evaluaciones')
 export class Evaluacion {

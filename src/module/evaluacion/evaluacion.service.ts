@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Evaluacion } from './entities/evaluacion.entity';
 import { ItemEvaluacion } from './entities/item-evaluacion.entity';
 import { CreateEvaluacionDto } from './dto/create-evaluacion.dto';
+import { Postulacion } from '../postulacion/entities/postulacion.entity';
 
 
 @Injectable()

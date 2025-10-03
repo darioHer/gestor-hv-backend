@@ -1,9 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { Administrador } from '../admin/entities/admin.entity';
+import { RegisterAdminDto } from './dtos/register-admin.dto';
+
 
 @Injectable()
 export class AuthService {
@@ -28,7 +30,31 @@ export class AuthService {
         const exists = await this.adminRepo.findOne({ where: { usuario: 'admin' } });
         if (exists) return exists;
         const hash = await bcrypt.hash('admin123', 10);
-        const admin = this.adminRepo.create({ nombre: 'Super Admin', usuario: 'admin', password: hash });
+        const admin = this.adminRepo.create({
+            nombre: 'Super Admin',
+            usuario: 'admin',
+            password: hash,
+            rol: 'ADMIN',
+        });
+        return this.adminRepo.save(admin);
+    }
+
+    async register(dto: RegisterAdminDto) {
+        
+
+        const exists = await this.adminRepo.findOne({ where: { usuario: dto.usuario } });
+        if (exists) {
+            throw new BadRequestException('El usuario ya existe');
+        }
+
+        const hash = await bcrypt.hash(dto.password, 10);
+        const admin = this.adminRepo.create({
+            nombre: dto.nombre,
+            usuario: dto.usuario,
+            password: hash,
+            rol: dto.rol ?? 'ADMIN',
+        });
+
         return this.adminRepo.save(admin);
     }
 }
