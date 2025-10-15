@@ -15,6 +15,7 @@ import { AuthModule } from './module/auth/auth.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PostulacionModule } from './module/postulacion/postulacion.module';
+import { PerfilModule } from './module/perfil/perfil.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { PostulacionModule } from './module/postulacion/postulacion.module';
     EvaluacionModule,
     AdminModule,
     AuthModule,
+    PerfilModule
   ],
   controllers: [AppController],
   providers: [AppService],
