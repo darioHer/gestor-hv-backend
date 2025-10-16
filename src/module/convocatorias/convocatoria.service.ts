@@ -1,63 +1,70 @@
-import { Injectable, NotFoundException,  BadRequestException} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { Convocatoria } from './entities/convocatoria.entity';
 import { CreateConvocatoriaDto } from './dtos/create-convocatoria.dto';
 
-
-
 @Injectable()
 export class ConvocatoriaService {
-    constructor(@InjectRepository(Convocatoria) private repo: Repository<Convocatoria>) { }
+  constructor(@InjectRepository(Convocatoria) private repo: Repository<Convocatoria>) {}
 
-    create(dto: CreateConvocatoriaDto) { return this.repo.save(this.repo.create(dto)); }
-    findAll() { return this.repo.find(); }
-    async findOne(id: number) {
-        const c = await this.repo.findOne({ where: { id }, relations: { postulaciones: true } });
-        if (!c) throw new NotFoundException('Convocatoria no encontrada');
-        return c;
-    }
-    async remove(id: number) {
-        const c = await this.findOne(id);
-        await this.repo.remove(c);
-        return { deleted: true };
-    }
-
-    async cerrarConvocatoria(id: number) {
-  const convocatoria = await this.repo.findOne({ where: { id } });
-
-  if (!convocatoria) {
-    throw new NotFoundException('Convocatoria no encontrada');
+  create(dto: CreateConvocatoriaDto) {
+    return this.repo.save(this.repo.create(dto));
   }
 
-  // Comparar fecha de cierre con la fecha actual
-  const hoy = new Date();
-  const fechaCierre = new Date(convocatoria.fechaCierre);
+findAll(estado?: string) {
+  if (estado) {
+    const estadosValidos = ['abierta', 'cerrada'];
+    if (!estadosValidos.includes(estado)) {
+      throw new BadRequestException(`Estado inválido. Usa uno de: ${estadosValidos.join(', ')}`);
+    }
 
-  if (hoy < fechaCierre) {
-    throw new BadRequestException('La convocatoria aún no ha alcanzado la fecha de cierre');
+    return this.repo.find({
+      where: { estado: estado as 'abierta' | 'cerrada' },
+    });
+  }
+  return this.repo.find();
+}
+
+  async findOne(id: number) {
+    const convocatoria = await this.repo.findOne({ where: { id } });
+    if (!convocatoria) throw new NotFoundException('Convocatoria no encontrada');
+    return convocatoria;
   }
 
-  convocatoria.estado = 'cerrada';
-  return await this.repo.save(convocatoria);
-}
+  async remove(id: number) {
+    const convocatoria = await this.findOne(id);
+    await this.repo.remove(convocatoria);
+    return { deleted: true };
+  }
 
-async update(id: number, dto: Partial<CreateConvocatoriaDto>) {
-  const convocatoria = await this.findOne(id);
-  Object.assign(convocatoria, dto);
-  return this.repo.save(convocatoria);
-}
+  async cerrarConvocatoria(id: number) {
+    const convocatoria = await this.repo.findOne({ where: { id } });
+    if (!convocatoria) throw new NotFoundException('Convocatoria no encontrada');
 
-// Automático con CRON (se ejecuta todos los días a medianoche)
+    const hoy = new Date();
+    const fechaCierre = new Date(convocatoria.fechaCierre);
+
+    if (hoy < fechaCierre) {
+      throw new BadRequestException('La convocatoria aún no ha alcanzado la fecha de cierre');
+    }
+
+    convocatoria.estado = 'cerrada';
+    return await this.repo.save(convocatoria);
+  }
+
+  async update(id: number, dto: Partial<CreateConvocatoriaDto>) {
+    const convocatoria = await this.findOne(id);
+    Object.assign(convocatoria, dto);
+    return this.repo.save(convocatoria);
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async cerrarConvocatoriasExpiradas() {
-    const hoy = new Date().toISOString().slice(0, 10); 
+    const hoy = new Date().toISOString().slice(0, 10);
     const convocatorias = await this.repo.find({
-      where: {
-        fechaCierre: LessThan(hoy),
-        estado: 'abierta',
-      },
+      where: { fechaCierre: LessThan(hoy), estado: 'abierta' },
     });
 
     if (convocatorias.length > 0) {
@@ -67,7 +74,7 @@ async update(id: number, dto: Partial<CreateConvocatoriaDto>) {
       }
       console.log(`🔒 ${convocatorias.length} convocatorias cerradas automáticamente`);
     } else {
-      console.log('⏳ No hay convocatorias pendientes de cierre')
+      console.log('⏳ No hay convocatorias pendientes de cierre');
     }
   }
 }
