@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Patch, Query } from '@nestjs/common';
 import { PostulacionService } from './postulacion.service';
 import { CreatePostulacionDto } from './dto/create-postulacion.dto';
 
@@ -11,10 +11,11 @@ export class PostulacionController {
     return this.service.create(dto);
   }
 
-  @Get()
-  findAll() {
-    return this.service.findAll();
-  }
+@Get()
+findAll(@Query('estado') estado?: string) {
+  return this.service.findAll(estado);
+}
+
 
   @Get('convocatoria/:id')
   findByConvocatoria(@Param('id', ParseIntPipe) id: number) {
@@ -35,5 +36,11 @@ async getHistorial(@Param('id', ParseIntPipe) id: number) {
   const postulacion = await this.service.findOneWithHistorial(id);
   return postulacion.historial;
 }
+
+@Get()
+async findAllFiltered(@Query() filters: any) {
+  return this.service.findAllWithFilters(filters);
+}
+
 
 }

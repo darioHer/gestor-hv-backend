@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { ConvocatoriaService } from './convocatoria.service';
 import { CreateConvocatoriaDto } from './dtos/create-convocatoria.dto';
 
@@ -13,9 +13,9 @@ export class ConvocatoriaController {
     }
 
     @Get()
-    findAll() {
-        return this.service.findAll();
-    }
+    findAll(@Query('estado') estado?: string) {
+        return this.service.findAll(estado);
+}
 
     @Get(':id')
     findOne(@Param('id', ParseIntPipe) id: number) {

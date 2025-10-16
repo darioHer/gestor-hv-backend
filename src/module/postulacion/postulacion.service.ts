@@ -49,19 +49,30 @@ private historialRepo: Repository<HistorialPostulacion>,
     return this.repo.save(postulacion);
   }
 
-  findAll() {
-    return this.repo.find({ relations: ['convocatoria', 'docente'] });
+async findAll(estado?: string) {
+  const where: any = {};
+
+  // Si el estado viene en la query (?estado=aprobada)
+  if (estado) {
+    where.estado = estado;
   }
 
-  async findByConvocatoria(convocatoriaId: number) {
-    const convocatoria = await this.convocatoriaRepo.findOne({ where: { id: convocatoriaId } });
-    if (!convocatoria) throw new NotFoundException('Convocatoria no encontrada');
+  return this.repo.find({
+    where,
+    relations: ['convocatoria', 'docente'],
+  });
+}
 
-    return this.repo.find({
-      where: { convocatoria: { id: convocatoriaId } },
-      relations: ['docente', 'convocatoria'],
-    });
-  }
+async findByConvocatoria(convocatoriaId: number) {
+  const convocatoria = await this.convocatoriaRepo.findOne({ where: { id: convocatoriaId } });
+  if (!convocatoria) throw new NotFoundException('Convocatoria no encontrada');
+
+  return this.repo.find({
+    where: { convocatoria: { id: convocatoriaId } },
+    relations: ['docente', 'convocatoria'],
+  });
+}
+
 
   async findOneWithHistorial(id: number) {
   const postulacion = await this.repo.findOne({
@@ -106,6 +117,36 @@ private historialRepo: Repository<HistorialPostulacion>,
 
   return postulacion;
 }
+
+async findAllWithFilters(filters: any) {
+  const query = this.repo.createQueryBuilder('postulacion')
+    .leftJoinAndSelect('postulacion.docente', 'docente')
+    .leftJoinAndSelect('postulacion.convocatoria', 'convocatoria');
+
+  // Validar estado
+  if (filters.estado) {
+    const estadosValidos = ['enviada', 'en_evaluacion', 'aprobada', 'rechazada'];
+    if (!estadosValidos.includes(filters.estado)) {
+      throw new BadRequestException(
+        `El estado '${filters.estado}' no es válido. Usa uno de: ${estadosValidos.join(', ')}.`
+      );
+    }
+
+    query.andWhere('postulacion.estado = :estado', { estado: filters.estado });
+  }
+
+  if (filters.docenteId) {
+    query.andWhere('docente.id = :docenteId', { docenteId: filters.docenteId });
+  }
+
+  if (filters.convocatoriaId) {
+    query.andWhere('convocatoria.id = :convocatoriaId', { convocatoriaId: filters.convocatoriaId });
+  }
+
+  return await query.getMany();
+}
+
+
 
 
 }
