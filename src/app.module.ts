@@ -16,6 +16,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PostulacionModule } from './module/postulacion/postulacion.module';
 import { PerfilModule } from './module/perfil/perfil.module';
+import { NotificacionModule } from './module/notificaciones/noti.module';
 
 @Module({
   imports: [
@@ -33,7 +34,8 @@ import { PerfilModule } from './module/perfil/perfil.module';
     EvaluacionModule,
     AdminModule,
     AuthModule,
-    PerfilModule
+    PerfilModule,
+   NotificacionModule
   ],
   controllers: [AppController],
   providers: [AppService],
