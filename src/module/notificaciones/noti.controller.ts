@@ -1,17 +1,43 @@
-import { Controller, Post, Get, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Patch, Delete } from '@nestjs/common';
 import { NotificacionService } from './noti.service';
+import { TipoNotificacion } from './entities/noti.entity';
 
 @Controller('notificaciones')
 export class NotificacionController {
-  constructor(private readonly notificacionService: NotificacionService) {}
+  constructor(private readonly service: NotificacionService) {}
 
+  // 📨 Crear notificación manual (Postman o backend)
   @Post()
-  async crear(@Body() body: { usuarioId: number; mensaje: string }) {
-    return this.notificacionService.crear(body.usuarioId, body.mensaje);
+  crear(@Body() body: { docenteId: number; mensaje: string; tipo: TipoNotificacion; esAdmin?: boolean }) {
+    return this.service.crear(body.docenteId, body.mensaje, body.tipo, body.esAdmin || false);
   }
 
-  @Get(':usuarioId')
-  async listar(@Param('usuarioId') usuarioId: number) {
-    return this.notificacionService.listarPorUsuario(usuarioId);
+  // 📋 Ver todas las notificaciones
+  @Get()
+  findAll() {
+    return this.service.findAll();
+  }
+
+  // 📬 Ver notificaciones de un docente específico
+  @Get('docente/:id')
+  findByDocente(@Param('id') id: number) {
+    return this.service.findByDocente(id);
+  }
+  @Get('admin')
+findAdmin() {
+  return this.service.findAll().then(notas => notas.filter(n => !n.docente));
+}
+
+  // ✅ Marcar una notificación como leída
+  @Patch(':id/leida')
+  marcarLeida(@Param('id') id: number) {
+    return this.service.marcarLeida(id);
+  }
+
+  // 🗑️ Eliminar una notificación
+  @Delete(':id')
+  eliminar(@Param('id') id: number) {
+    return this.service.eliminar(id);
   }
 }
+

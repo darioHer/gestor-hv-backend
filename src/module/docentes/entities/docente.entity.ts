@@ -1,27 +1,31 @@
-    import { Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
-    import { HojaDeVida } from './hoja-de-vida.entity';
+import { Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { HojaDeVida } from './hoja-de-vida.entity';
+import { Notificacion } from '../../notificaciones/entities/noti.entity';
 
+@Entity('docentes')
+export class Docente {
+  @PrimaryGeneratedColumn()
+  id: number;
 
-    @Entity('docentes')
-    export class Docente {
-        @PrimaryGeneratedColumn()
-        id: number;
+  @Column({ length: 120 })
+  nombre: string;
 
-        @Column({ length: 120 })
-        nombre: string;
+  @Column({ unique: true, length: 30 })
+  identificacion: string;
 
-        @Column({ unique: true, length: 30 })
-        identificacion: string;
+  @Column({ nullable: true, length: 120 })
+  contacto: string;
 
-        @Column({ nullable: true, length: 120 })
-        contacto: string;
+  @Column({ nullable: true })
+  foto: string; // URL o path
 
-        @Column({ nullable: true })
-        foto: string; // URL o path
+  @Column({ nullable: true, length: 120 })
+  disponibilidadHoraria: string;
 
-        @Column({ nullable: true, length: 120 })
-        disponibilidadHoraria: string;
+  @OneToOne(() => HojaDeVida, (hv) => hv.docente, { cascade: true, eager: true })
+  hojaDeVida: HojaDeVida;
 
-        @OneToOne(() => HojaDeVida, (hv) => hv.docente, { cascade: true, eager: true })
-        hojaDeVida: HojaDeVida;
-    }
+  // 👇 Agrega esta relación
+  @OneToMany(() => Notificacion, (notificacion) => notificacion.docente, { cascade: true })
+  notificaciones: Notificacion[];
+}

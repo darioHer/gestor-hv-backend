@@ -8,18 +8,20 @@ import { Postulacion } from './entities/postulacion.entity';
 import { HistorialPostulacion } from './entities/historial-postulacion.entity';
 import { Docente } from '../docentes/entities/docente.entity';
 import { Convocatoria } from '../convocatorias/entities/convocatoria.entity';
+import { NotificacionModule } from '../notificaciones/noti.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([
-            Postulacion,
-            HistorialPostulacion,
-            Docente,
-            Convocatoria,
-        ]),
-    ],
-    controllers: [PostulacionController],
-    providers: [PostulacionService],
-    exports: [PostulacionService],
+  imports: [
+    TypeOrmModule.forFeature([
+      Postulacion,
+      HistorialPostulacion,
+      Docente,
+      Convocatoria,
+    ]),
+    NotificacionModule, 
+  ],
+  controllers: [PostulacionController],
+  providers: [PostulacionService],
+  exports: [PostulacionService],
 })
-export class PostulacionModule { }
+export class PostulacionModule {}

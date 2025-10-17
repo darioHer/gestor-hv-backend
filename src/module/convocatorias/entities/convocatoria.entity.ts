@@ -6,6 +6,9 @@ import { Postulacion } from '../../postulacion/entities/postulacion.entity';
 export class Convocatoria {
     @PrimaryGeneratedColumn()
     id: number;
+    
+  @Column()
+  nombre: string; 
 
     @Column({ length: 60 })
     tipoVinculacion: string;
