@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { PostulacionController } from './postulacion.controller';
@@ -18,7 +18,7 @@ import { NotificacionModule } from '../notificaciones/noti.module';
       Docente,
       Convocatoria,
     ]),
-    NotificacionModule, 
+    forwardRef(()=>NotificacionModule), 
   ],
   controllers: [PostulacionController],
   providers: [PostulacionService],
