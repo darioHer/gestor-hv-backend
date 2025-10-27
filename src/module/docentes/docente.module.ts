@@ -10,6 +10,6 @@ import { DocenteController } from './docente.controller';
     imports: [TypeOrmModule.forFeature([Docente, HojaDeVida, Documento])],
     controllers: [DocenteController],
     providers: [DocenteService],
-    exports: [TypeOrmModule],
+    exports: [TypeOrmModule,DocenteService],
 })
 export class DocenteModule { }

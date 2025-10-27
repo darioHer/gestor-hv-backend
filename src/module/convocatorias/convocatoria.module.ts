@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { Convocatoria } from './entities/convocatoria.entity';
 import { ConvocatoriaService } from './convocatoria.service';
 import { ConvocatoriaController } from './convocatoria.controller';
@@ -9,8 +10,9 @@ import { PostulacionModule } from '../postulacion/postulacion.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Convocatoria]),
-    forwardRef(() => PostulacionModule), // 👈 importa el módulo completo, no el servicio
-    forwardRef(() => NotificacionModule), // 👈 necesario porque hay dependencia entre ambos
+    ScheduleModule.forRoot(),
+    forwardRef(() => PostulacionModule),
+    forwardRef(() => NotificacionModule),
   ],
   controllers: [ConvocatoriaController],
   providers: [ConvocatoriaService],

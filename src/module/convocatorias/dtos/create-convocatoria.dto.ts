@@ -1,4 +1,6 @@
 import { IsDateString, IsEnum, IsOptional, IsString, Length } from 'class-validator';
+import { ConvocatoriaEstado } from 'src/module/common/enums/convocatoria-estado.enum';
+
 
 export class CreateConvocatoriaDto {
     @IsString() @Length(1, 60)
@@ -16,6 +18,6 @@ export class CreateConvocatoriaDto {
     @IsOptional() @IsString()
     requisitos?: string;
 
-    @IsOptional() @IsEnum(['abierta', 'cerrada'])
-    estado?: 'abierta' | 'cerrada';
+    @IsOptional() @IsEnum(ConvocatoriaEstado)
+    estado?: ConvocatoriaEstado; // default se pone en la entidad
 }

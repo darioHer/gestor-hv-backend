@@ -1,5 +1,6 @@
 import { Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { HojaDeVida } from './hoja-de-vida.entity';
+import { Postulacion } from '../../postulacion/entities/postulacion.entity';
 import { Notificacion } from '../../notificaciones/entities/noti.entity';
 
 @Entity('docentes')
@@ -25,7 +26,9 @@ export class Docente {
   @OneToOne(() => HojaDeVida, (hv) => hv.docente, { cascade: true, eager: true })
   hojaDeVida: HojaDeVida;
 
-  // 👇 Agrega esta relación
+  @OneToMany(() => Postulacion, (p) => p.docente)
+  postulaciones: Postulacion[];
+
   @OneToMany(() => Notificacion, (notificacion) => notificacion.docente, { cascade: true })
   notificaciones: Notificacion[];
 }

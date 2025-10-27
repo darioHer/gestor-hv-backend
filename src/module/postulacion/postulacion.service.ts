@@ -1,30 +1,65 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Postulacion } from './entities/postulacion.entity';
 import { CreatePostulacionDto } from './dto/create-postulacion.dto';
+
 import { Docente } from '../docentes/entities/docente.entity';
 import { Convocatoria } from '../convocatorias/entities/convocatoria.entity';
 import { HistorialPostulacion } from './entities/historial-postulacion.entity';
+
+// 🔹 Mantener ambas importaciones importantes
 import { NotificacionService } from '../notificaciones/noti.service';
-import { TipoNotificacion } from '../notificaciones/entities/noti.entity'; // ✅ Importar enum
+import { TipoNotificacion } from '../notificaciones/entities/noti.entity';
+import { EstadoPostulacion } from '../common/enums/postulacion-estado.enum';
 
 @Injectable()
 export class PostulacionService {
   constructor(
     @InjectRepository(Postulacion) private repo: Repository<Postulacion>,
     @InjectRepository(Docente) private docenteRepo: Repository<Docente>,
-    @InjectRepository(Convocatoria) private convocatoriaRepo: Repository<Convocatoria>,
-    @InjectRepository(HistorialPostulacion) private historialRepo: Repository<HistorialPostulacion>,
+    @InjectRepository(Convocatoria)
+    private convocatoriaRepo: Repository<Convocatoria>,
+    @InjectRepository(HistorialPostulacion)
+    private historialRepo: Repository<HistorialPostulacion>,
     private readonly notificacionService: NotificacionService,
   ) {}
 
-  async create(dto: CreatePostulacionDto) {
-    const docente = await this.docenteRepo.findOne({ where: { id: dto.docenteId } });
-    const convocatoria = await this.convocatoriaRepo.findOne({ where: { id: dto.convocatoriaId } });
+  /** Crear como DOCENTE (id viene del JWT) */
+  async createForDocente(docenteId: number, dto: CreatePostulacionDto) {
+    return this.createInternal({ docenteId, ...dto });
+  }
 
+  private async createInternal(dto: {
+    docenteId: number;
+    convocatoriaId: number;
+    programaObjetivo: string;
+  }) {
+    const docente = await this.docenteRepo.findOne({
+      where: { id: dto.docenteId },
+    });
     if (!docente) throw new NotFoundException('Docente no encontrado');
-    if (!convocatoria) throw new NotFoundException('Convocatoria no encontrada');
+
+    const convocatoria = await this.convocatoriaRepo.findOne({
+      where: { id: dto.convocatoriaId },
+    });
+    if (!convocatoria)
+      throw new NotFoundException('Convocatoria no encontrada');
+
+    // 🔹 Validar estado/rango de fechas (del remoto)
+    const hoy = new Date().toISOString().slice(0, 10);
+    const enRango =
+      convocatoria.fechaInicio <= hoy && hoy <= convocatoria.fechaCierre;
+    if (convocatoria.estado !== 'abierta' || !enRango) {
+      throw new ForbiddenException(
+        'La convocatoria no está abierta para postulación',
+      );
+    }
 
     // Validar duplicados
     const existente = await this.repo.findOne({
@@ -32,9 +67,7 @@ export class PostulacionService {
         docente: { id: dto.docenteId },
         convocatoria: { id: dto.convocatoriaId },
       },
-      relations: ['docente', 'convocatoria'],
     });
-
     if (existente) {
       throw new BadRequestException(
         'Ya existe una postulación para este docente en esta convocatoria',
@@ -46,6 +79,7 @@ export class PostulacionService {
       programaObjetivo: dto.programaObjetivo,
       docente,
       convocatoria,
+      estado: EstadoPostulacion.ENVIADA,
     });
 
     const nueva = await this.repo.save(postulacion);
@@ -54,38 +88,64 @@ export class PostulacionService {
     await this.notificacionService.crear(
       docente.id,
       `Tu postulación a la convocatoria "${convocatoria.nombre}" ha sido registrada exitosamente.`,
-      TipoNotificacion.POSTULACION
+      TipoNotificacion.POSTULACION,
     );
 
-    // 🧑‍💼 Notificar al administrador (usa ID fijo o ajusta a tu sistema)
+    // 🧑‍💼 Notificar al administrador
     try {
       await this.notificacionService.crear(
-        1, // ID del administrador
+        1,
         `El docente ${docente.nombre} se ha postulado a la convocatoria "${convocatoria.nombre}".`,
-        TipoNotificacion.ADMIN, // ⚡ usar enum ADMIN
-        true // esAdmin = true
+        TipoNotificacion.ADMIN,
+        true,
       );
     } catch (error) {
-      console.warn('No se pudo enviar la notificación al administrador:', error.message);
+      console.warn(
+        'No se pudo enviar la notificación al administrador:',
+        error.message,
+      );
     }
 
     return nueva;
   }
 
-  async findAll(estado?: string) {
-    const where: any = {};
+  async findAll(filters?: any) {
+    const qb = this.repo
+      .createQueryBuilder('p')
+      .leftJoinAndSelect('p.docente', 'docente')
+      .leftJoinAndSelect('p.convocatoria', 'convocatoria');
 
-    if (estado) where.estado = estado;
+    if (filters?.estado) {
+      const permitidos = Object.values(EstadoPostulacion);
+      if (!permitidos.includes(filters.estado)) {
+        throw new BadRequestException(
+          `Estado inválido. Usa uno de: ${permitidos.join(', ')}`,
+        );
+      }
+      qb.andWhere('p.estado = :estado', { estado: filters.estado });
+    }
 
-    return this.repo.find({
-      where,
-      relations: ['convocatoria', 'docente'],
-    });
+    if (filters?.docenteId) {
+      qb.andWhere('docente.id = :docenteId', {
+        docenteId: Number(filters.docenteId),
+      });
+    }
+
+    if (filters?.convocatoriaId) {
+      qb.andWhere('convocatoria.id = :convocatoriaId', {
+        convocatoriaId: Number(filters.convocatoriaId),
+      });
+    }
+
+    return qb.getMany();
   }
 
   async findByConvocatoria(convocatoriaId: number) {
-    const convocatoria = await this.convocatoriaRepo.findOne({ where: { id: convocatoriaId } });
-    if (!convocatoria) throw new NotFoundException('Convocatoria no encontrada');
+    const convocatoria = await this.convocatoriaRepo.findOne({
+      where: { id: convocatoriaId },
+    });
+    if (!convocatoria)
+      throw new NotFoundException('Convocatoria no encontrada');
 
     return this.repo.find({
       where: { convocatoria: { id: convocatoriaId } },
@@ -96,76 +156,45 @@ export class PostulacionService {
   async findOneWithHistorial(id: number) {
     const postulacion = await this.repo.findOne({
       where: { id },
-      relations: ['historial'],
+      relations: ['historial', 'docente', 'convocatoria'],
     });
-
-    if (!postulacion) {
+    if (!postulacion)
       throw new NotFoundException('Postulación no encontrada');
-    }
-
     return postulacion;
   }
 
-  async updateEstado(id: number, nuevoEstado: string) {
+  async updateEstado(id: number, nuevoEstado: EstadoPostulacion) {
     const postulacion = await this.repo.findOne({
       where: { id },
-      relations: ['convocatoria', 'docente'],
+      relations: ['docente', 'convocatoria'],
     });
+    if (!postulacion)
+      throw new NotFoundException('Postulación no encontrada');
 
-    if (!postulacion) throw new NotFoundException('Postulación no encontrada');
-
-    const estadosPermitidos = ['enviada', 'en_evaluacion', 'aprobada', 'rechazada'];
-    if (!estadosPermitidos.includes(nuevoEstado)) {
+    const permitidos = Object.values(EstadoPostulacion);
+    if (!permitidos.includes(nuevoEstado)) {
       throw new BadRequestException(
-        `Estado inválido. Solo se permiten: ${estadosPermitidos.join(', ')}`
+        `Estado inválido. Usa uno de: ${permitidos.join(', ')}`,
       );
     }
 
-    // actualizar estado actual
     postulacion.estado = nuevoEstado;
     await this.repo.save(postulacion);
 
-    // crear registro en historial
     const historial = this.historialRepo.create({
       estado: nuevoEstado,
       postulacion,
     });
     await this.historialRepo.save(historial);
 
-    // 📨 Notificación automática según el nuevo estado usando enum
+    // 🔹 Agregamos notificación automática (de tu versión)
     const mensaje = `El estado de tu postulación a la convocatoria "${postulacion.convocatoria.nombre}" cambió a "${nuevoEstado}".`;
     await this.notificacionService.crear(
       postulacion.docente.id,
       mensaje,
-      TipoNotificacion.ACEPTACION
+      TipoNotificacion.ACEPTACION,
     );
 
     return postulacion;
-  }
-
-  async findAllWithFilters(filters: any) {
-    const query = this.repo.createQueryBuilder('postulacion')
-      .leftJoinAndSelect('postulacion.docente', 'docente')
-      .leftJoinAndSelect('postulacion.convocatoria', 'convocatoria');
-
-    if (filters.estado) {
-      const estadosValidos = ['enviada', 'en_evaluacion', 'aprobada', 'rechazada'];
-      if (!estadosValidos.includes(filters.estado)) {
-        throw new BadRequestException(
-          `El estado '${filters.estado}' no es válido. Usa uno de: ${estadosValidos.join(', ')}.`
-        );
-      }
-      query.andWhere('postulacion.estado = :estado', { estado: filters.estado });
-    }
-
-    if (filters.docenteId) {
-      query.andWhere('docente.id = :docenteId', { docenteId: filters.docenteId });
-    }
-
-    if (filters.convocatoriaId) {
-      query.andWhere('convocatoria.id = :convocatoriaId', { convocatoriaId: filters.convocatoriaId });
-    }
-
-    return await query.getMany();
   }
 }

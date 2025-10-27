@@ -1,4 +1,6 @@
+import { Role } from 'src/module/common/enums/role.enum';
 import { Entity, PrimaryGeneratedColumn, Column, Unique } from 'typeorm';
+
 
 @Entity('administradores')
 @Unique(['usuario'])
@@ -15,6 +17,6 @@ export class Administrador {
     @Column()
     password: string;
 
-    @Column({ default: 'ADMIN' })
-    rol: string;
+    @Column({ type: 'enum', enum: Role, default: Role.ADMIN })
+    rol: Role;
 }
