@@ -1,8 +1,7 @@
-import { IsString, Length, IsOptional, IsEnum } from 'class-validator';
-import { Role } from 'src/module/common/enums/role.enum';
+import { IsEnum, IsOptional, IsString, Length } from 'class-validator';
+import { Role } from '../../common/enums/role.enum';
 
-
-export class CreateAdminDto {
+export class RegisterDto {
     @IsString()
     @Length(3, 80)
     nombre: string;
@@ -17,5 +16,5 @@ export class CreateAdminDto {
 
     @IsOptional()
     @IsEnum(Role)
-    rol?: Role; 
+    rol?: Role; // ADMIN | DOCENTE | COMITE
 }

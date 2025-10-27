@@ -1,31 +1,41 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { Convocatoria } from './entities/convocatoria.entity';
 import { CreateConvocatoriaDto } from './dtos/create-convocatoria.dto';
 
+import { Postulacion } from '../postulacion/entities/postulacion.entity';
+import { ConvocatoriaEstado } from '../common/enums/convocatoria-estado.enum';
+
 @Injectable()
 export class ConvocatoriaService {
-  constructor(@InjectRepository(Convocatoria) private repo: Repository<Convocatoria>) {}
+  constructor(
+    @InjectRepository(Convocatoria) private repo: Repository<Convocatoria>,
+    @InjectRepository(Postulacion) private postuRepo: Repository<Postulacion>,
+  ) { }
 
-  create(dto: CreateConvocatoriaDto) {
-    return this.repo.save(this.repo.create(dto));
-  }
-
-findAll(estado?: string) {
-  if (estado) {
-    const estadosValidos = ['abierta', 'cerrada'];
-    if (!estadosValidos.includes(estado)) {
-      throw new BadRequestException(`Estado inválido. Usa uno de: ${estadosValidos.join(', ')}`);
+  async create(dto: CreateConvocatoriaDto) {
+    if (new Date(dto.fechaCierre) < new Date(dto.fechaInicio)) {
+      throw new BadRequestException('La fecha de cierre no puede ser anterior a la de inicio');
     }
-
-    return this.repo.find({
-      where: { estado: estado as 'abierta' | 'cerrada' },
+    const entity = this.repo.create({
+      ...dto,
+      estado: dto.estado ?? ConvocatoriaEstado.ABIERTA,
     });
+    return this.repo.save(entity);
   }
-  return this.repo.find();
-}
+
+  findAll(estado?: string) {
+    if (estado) {
+      const valores = Object.values(ConvocatoriaEstado);
+      if (!valores.includes(estado as ConvocatoriaEstado)) {
+        throw new BadRequestException(`Estado inválido. Usa uno de: ${valores.join(', ')}`);
+      }
+      return this.repo.find({ where: { estado: estado as ConvocatoriaEstado } });
+    }
+    return this.repo.find();
+  }
 
   async findOne(id: number) {
     const convocatoria = await this.repo.findOne({ where: { id } });
@@ -50,12 +60,17 @@ findAll(estado?: string) {
       throw new BadRequestException('La convocatoria aún no ha alcanzado la fecha de cierre');
     }
 
-    convocatoria.estado = 'cerrada';
+    convocatoria.estado = ConvocatoriaEstado.CERRADA;
     return await this.repo.save(convocatoria);
   }
 
   async update(id: number, dto: Partial<CreateConvocatoriaDto>) {
     const convocatoria = await this.findOne(id);
+    if (dto.fechaInicio || dto.fechaCierre) {
+      const fi = new Date(dto.fechaInicio ?? convocatoria.fechaInicio);
+      const fc = new Date(dto.fechaCierre ?? convocatoria.fechaCierre);
+      if (fc < fi) throw new BadRequestException('La fecha de cierre no puede ser anterior a la de inicio');
+    }
     Object.assign(convocatoria, dto);
     return this.repo.save(convocatoria);
   }
@@ -64,17 +79,24 @@ findAll(estado?: string) {
   async cerrarConvocatoriasExpiradas() {
     const hoy = new Date().toISOString().slice(0, 10);
     const convocatorias = await this.repo.find({
-      where: { fechaCierre: LessThan(hoy), estado: 'abierta' },
+      where: { fechaCierre: LessThan(hoy), estado: ConvocatoriaEstado.ABIERTA },
     });
 
-    if (convocatorias.length > 0) {
-      for (const c of convocatorias) {
-        c.estado = 'cerrada';
-        await this.repo.save(c);
-      }
-      console.log(`🔒 ${convocatorias.length} convocatorias cerradas automáticamente`);
-    } else {
-      console.log('⏳ No hay convocatorias pendientes de cierre');
+    for (const c of convocatorias) {
+      c.estado = ConvocatoriaEstado.CERRADA;
+      await this.repo.save(c);
     }
+    if (convocatorias.length) {
+      console.log(`${convocatorias.length} convocatorias cerradas automáticamente`);
+    }
+  }
+  async postular(docenteId: number, convocatoriaId: number) {
+    const conv = await this.findOne(convocatoriaId);
+    const hoy = new Date().toISOString().slice(0, 10);
+    const enRango = conv.fechaInicio <= hoy && hoy <= conv.fechaCierre;
+    if (conv.estado !== ConvocatoriaEstado.ABIERTA || !enRango) {
+      throw new ForbiddenException('La convocatoria no está abierta para postulación');
+    }
+
   }
 }

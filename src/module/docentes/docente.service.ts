@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Docente } from './entities/docente.entity';
@@ -14,15 +14,21 @@ export class DocenteService {
     ) { }
 
     async create(dto: CreateDocenteDto) {
+        const existe = await this.repo.findOne({ where: { identificacion: dto.identificacion } });
+        if (existe) {
+            throw new BadRequestException('Ya existe un docente con esa identificación');
+        }
+
         const docente = this.repo.create(dto);
-        // crear HV vacía al crear docente
         const hv = this.hvRepo.create({});
         docente.hojaDeVida = hv;
         await this.hvRepo.save(hv);
         return this.repo.save(docente);
     }
 
-    findAll() { return this.repo.find(); }
+    findAll() {
+        return this.repo.find();
+    }
 
     async findOne(id: number) {
         const d = await this.repo.findOne({ where: { id } });
@@ -32,6 +38,13 @@ export class DocenteService {
 
     async update(id: number, dto: UpdateDocenteDto) {
         const d = await this.findOne(id);
+        if (dto.identificacion && dto.identificacion !== d.identificacion) {
+            const existe = await this.repo.findOne({ where: { identificacion: dto.identificacion } });
+            if (existe) {
+                throw new BadRequestException('Ya existe un docente con esa identificación');
+            }
+        }
+
         Object.assign(d, dto);
         return this.repo.save(d);
     }

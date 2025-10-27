@@ -1,11 +1,13 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Postulacion } from './entities/postulacion.entity';
 import { CreatePostulacionDto } from './dto/create-postulacion.dto';
+
 import { Docente } from '../docentes/entities/docente.entity';
 import { Convocatoria } from '../convocatorias/entities/convocatoria.entity';
 import { HistorialPostulacion } from './entities/historial-postulacion.entity';
+import { EstadoPostulacion } from '../common/enums/postulacion-estado.enum';
 
 
 @Injectable()
@@ -14,139 +16,114 @@ export class PostulacionService {
     @InjectRepository(Postulacion) private repo: Repository<Postulacion>,
     @InjectRepository(Docente) private docenteRepo: Repository<Docente>,
     @InjectRepository(Convocatoria) private convocatoriaRepo: Repository<Convocatoria>,
-    @InjectRepository(HistorialPostulacion)
-private historialRepo: Repository<HistorialPostulacion>,
-  ) {}
+    @InjectRepository(HistorialPostulacion) private historialRepo: Repository<HistorialPostulacion>,
+  ) { }
 
-  async create(dto: CreatePostulacionDto) {
+  /** Crear como DOCENTE (id viene del JWT) */
+  async createForDocente(docenteId: number, dto: CreatePostulacionDto) {
+    return this.createInternal({ docenteId, ...dto });
+  }
+
+
+  private async createInternal(dto: { docenteId: number; convocatoriaId: number; programaObjetivo: string }) {
     const docente = await this.docenteRepo.findOne({ where: { id: dto.docenteId } });
-    const convocatoria = await this.convocatoriaRepo.findOne({ where: { id: dto.convocatoriaId } });
-
     if (!docente) throw new NotFoundException('Docente no encontrado');
+
+    const convocatoria = await this.convocatoriaRepo.findOne({ where: { id: dto.convocatoriaId } });
     if (!convocatoria) throw new NotFoundException('Convocatoria no encontrada');
 
-    // Validar duplicados, ahora con relaciones explícitas
+    // Validar estado/rango de fechas
+    const hoy = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
+    const enRango = convocatoria.fechaInicio <= hoy && hoy <= convocatoria.fechaCierre;
+    if (convocatoria.estado !== 'abierta' || !enRango) {
+      throw new ForbiddenException('La convocatoria no está abierta para postulación');
+    }
+
+    // Validar duplicados
     const existente = await this.repo.findOne({
       where: {
         docente: { id: dto.docenteId },
         convocatoria: { id: dto.convocatoriaId },
       },
-      relations: ['docente', 'convocatoria'],
     });
-
     if (existente) {
-      throw new BadRequestException(
-        'Ya existe una postulación para este docente en esta convocatoria',
-      );
+      throw new BadRequestException('Ya existe una postulación para este docente en esta convocatoria');
     }
 
     const postulacion = this.repo.create({
       programaObjetivo: dto.programaObjetivo,
       docente,
       convocatoria,
+      estado: EstadoPostulacion.ENVIADA,
     });
 
     return this.repo.save(postulacion);
   }
 
-async findAll(estado?: string) {
-  const where: any = {};
+  async findAll(filters?: any) {
+    const qb = this.repo.createQueryBuilder('p')
+      .leftJoinAndSelect('p.docente', 'docente')
+      .leftJoinAndSelect('p.convocatoria', 'convocatoria');
 
-  // Si el estado viene en la query (?estado=aprobada)
-  if (estado) {
-    where.estado = estado;
-  }
-
-  return this.repo.find({
-    where,
-    relations: ['convocatoria', 'docente'],
-  });
-}
-
-async findByConvocatoria(convocatoriaId: number) {
-  const convocatoria = await this.convocatoriaRepo.findOne({ where: { id: convocatoriaId } });
-  if (!convocatoria) throw new NotFoundException('Convocatoria no encontrada');
-
-  return this.repo.find({
-    where: { convocatoria: { id: convocatoriaId } },
-    relations: ['docente', 'convocatoria'],
-  });
-}
-
-
-  async findOneWithHistorial(id: number) {
-  const postulacion = await this.repo.findOne({
-    where: { id },
-    relations: ['historial'],
-  });
-
-  if (!postulacion) {
-    throw new NotFoundException('Postulación no encontrada');
-  }
-
-  return postulacion;
-}
-
-  async updateEstado(id: number, nuevoEstado: string) {
-  const postulacion = await this.repo.findOne({
-    where: { id },
-    relations: ['docente', 'convocatoria'],
-  });
-
-  if (!postulacion) {
-    throw new NotFoundException('Postulación no encontrada');
-  }
-
-  const estadosPermitidos = ['enviada', 'en_evaluacion', 'aprobada', 'rechazada'];
-  if (!estadosPermitidos.includes(nuevoEstado)) {
-    throw new BadRequestException(
-      `Estado inválido. Solo se permiten: ${estadosPermitidos.join(', ')}`,
-    );
-  }
-
-  //  actualizar estado actual
-  postulacion.estado = nuevoEstado;
-  await this.repo.save(postulacion);
-
-  //  crear registro en historial
-  const historial = this.historialRepo.create({
-    estado: nuevoEstado,
-    postulacion,
-  });
-  await this.historialRepo.save(historial);
-
-  return postulacion;
-}
-
-async findAllWithFilters(filters: any) {
-  const query = this.repo.createQueryBuilder('postulacion')
-    .leftJoinAndSelect('postulacion.docente', 'docente')
-    .leftJoinAndSelect('postulacion.convocatoria', 'convocatoria');
-
-  // Validar estado
-  if (filters.estado) {
-    const estadosValidos = ['enviada', 'en_evaluacion', 'aprobada', 'rechazada'];
-    if (!estadosValidos.includes(filters.estado)) {
-      throw new BadRequestException(
-        `El estado '${filters.estado}' no es válido. Usa uno de: ${estadosValidos.join(', ')}.`
-      );
+    if (filters?.estado) {
+      const permitidos = Object.values(EstadoPostulacion);
+      if (!permitidos.includes(filters.estado)) {
+        throw new BadRequestException(`Estado inválido. Usa uno de: ${permitidos.join(', ')}`);
+      }
+      qb.andWhere('p.estado = :estado', { estado: filters.estado });
     }
 
-    query.andWhere('postulacion.estado = :estado', { estado: filters.estado });
+    if (filters?.docenteId) {
+      qb.andWhere('docente.id = :docenteId', { docenteId: Number(filters.docenteId) });
+    }
+
+    if (filters?.convocatoriaId) {
+      qb.andWhere('convocatoria.id = :convocatoriaId', { convocatoriaId: Number(filters.convocatoriaId) });
+    }
+
+    return qb.getMany();
   }
 
-  if (filters.docenteId) {
-    query.andWhere('docente.id = :docenteId', { docenteId: filters.docenteId });
+  async findByConvocatoria(convocatoriaId: number) {
+    const convocatoria = await this.convocatoriaRepo.findOne({ where: { id: convocatoriaId } });
+    if (!convocatoria) throw new NotFoundException('Convocatoria no encontrada');
+
+    return this.repo.find({
+      where: { convocatoria: { id: convocatoriaId } },
+      relations: ['docente', 'convocatoria'],
+    });
   }
 
-  if (filters.convocatoriaId) {
-    query.andWhere('convocatoria.id = :convocatoriaId', { convocatoriaId: filters.convocatoriaId });
+  async findOneWithHistorial(id: number) {
+    const postulacion = await this.repo.findOne({
+      where: { id },
+      relations: ['historial', 'docente', 'convocatoria'],
+    });
+    if (!postulacion) throw new NotFoundException('Postulación no encontrada');
+    return postulacion;
   }
 
-  return await query.getMany();
-}
+  async updateEstado(id: number, nuevoEstado: EstadoPostulacion) {
+    const postulacion = await this.repo.findOne({
+      where: { id },
+      relations: ['docente', 'convocatoria'],
+    });
+    if (!postulacion) throw new NotFoundException('Postulación no encontrada');
 
+    const permitidos = Object.values(EstadoPostulacion);
+    if (!permitidos.includes(nuevoEstado)) {
+      throw new BadRequestException(`Estado inválido. Usa uno de: ${permitidos.join(', ')}`);
+    }
 
+    postulacion.estado = nuevoEstado;
+    await this.repo.save(postulacion);
 
+    const historial = this.historialRepo.create({
+      estado: nuevoEstado,
+      postulacion,
+    });
+    await this.historialRepo.save(historial);
 
+    return postulacion;
+  }
 }
