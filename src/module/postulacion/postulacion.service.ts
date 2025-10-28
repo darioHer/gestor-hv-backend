@@ -41,7 +41,8 @@ export class PostulacionService {
     programaObjetivo: string;
   }) {
     const docente = await this.docenteRepo.findOne({
-      where: { id: dto.docenteId },
+      where: {usuario : {id: dto.docenteId } },
+      relations: ['usuario'],
     });
     if (!docente) throw new NotFoundException('Docente no encontrado');
 
@@ -52,10 +53,17 @@ export class PostulacionService {
       throw new NotFoundException('Convocatoria no encontrada');
 
     // 🔹 Validar estado/rango de fechas (del remoto)
-    const hoy = new Date().toISOString().slice(0, 10);
-    const enRango =
-      convocatoria.fechaInicio <= hoy && hoy <= convocatoria.fechaCierre;
-    if (convocatoria.estado !== 'abierta' || !enRango) {
+    const hoy = new Date();
+    const fechaInicio = new Date(convocatoria.fechaInicio);
+    const fechaCierre = new Date(convocatoria.fechaCierre);
+    const enRango = fechaInicio <= hoy && hoy <= fechaCierre;
+    console.log({
+  estado: convocatoria.estado,
+  fechaInicio: convocatoria.fechaInicio,
+  fechaCierre: convocatoria.fechaCierre,
+  hoy: new Date().toISOString(),
+});
+    if (convocatoria.estado.toUpperCase() !== 'ABIERTA' || !enRango) {
       throw new ForbiddenException(
         'La convocatoria no está abierta para postulación',
       );

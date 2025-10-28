@@ -1,13 +1,20 @@
-import { Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn,JoinColumn} from 'typeorm';
 import { HojaDeVida } from './hoja-de-vida.entity';
 import { Postulacion } from '../../postulacion/entities/postulacion.entity';
 import { Notificacion } from '../../notificaciones/entities/noti.entity';
+import { Usuario } from '../../usuarios/entities/usuario.entity';
 
 @Entity('docentes')
 export class Docente {
   @PrimaryGeneratedColumn()
   id: number;
 
+  // 🔗 Relación 1:1 con la tabla usuarios
+  @OneToOne(() => Usuario, (u) => u.docente, { onDelete: 'CASCADE', eager: true })
+  @JoinColumn()
+  usuario: Usuario;
+
+  // 🔹 Campos adicionales del docente
   @Column({ length: 120 })
   nombre: string;
 
@@ -29,6 +36,6 @@ export class Docente {
   @OneToMany(() => Postulacion, (p) => p.docente)
   postulaciones: Postulacion[];
 
-  @OneToMany(() => Notificacion, (notificacion) => notificacion.docente, { cascade: true })
+  @OneToMany(() => Notificacion, (n) => n.docente, { cascade: true })
   notificaciones: Notificacion[];
 }

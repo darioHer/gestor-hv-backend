@@ -7,8 +7,8 @@ export class Convocatoria {
     @PrimaryGeneratedColumn()
     id: number;
     
-  @Column()
-  nombre: string; 
+    @Column()
+    nombre: string; 
 
     @Column({ length: 60 })
     tipoVinculacion: string;

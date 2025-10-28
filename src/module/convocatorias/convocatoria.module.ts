@@ -6,10 +6,11 @@ import { ConvocatoriaService } from './convocatoria.service';
 import { ConvocatoriaController } from './convocatoria.controller';
 import { NotificacionModule } from '../notificaciones/noti.module';
 import { PostulacionModule } from '../postulacion/postulacion.module';
+import { Postulacion } from '../postulacion/entities/postulacion.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Convocatoria]),
+    TypeOrmModule.forFeature([Convocatoria, Postulacion]),
     ScheduleModule.forRoot(),
     forwardRef(() => PostulacionModule),
     forwardRef(() => NotificacionModule),
