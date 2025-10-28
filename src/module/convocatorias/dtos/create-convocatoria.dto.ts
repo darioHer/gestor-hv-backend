@@ -2,7 +2,11 @@ import { IsDateString, IsEnum, IsOptional, IsString, Length } from 'class-valida
 import { ConvocatoriaEstado } from 'src/module/common/enums/convocatoria-estado.enum';
 
 
-export class CreateConvocatoriaDto {
+export class CreateConvocatoriaDto {    
+
+    @IsString()
+    nombre: string;
+    
     @IsString() @Length(1, 60)
     tipoVinculacion: string;
 

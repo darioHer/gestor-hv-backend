@@ -36,86 +36,84 @@ export class PostulacionService {
   }
 
   private async createInternal(dto: {
-    docenteId: number;
-    convocatoriaId: number;
-    programaObjetivo: string;
-  }) {
-    const docente = await this.docenteRepo.findOne({
-      where: {usuario : {id: dto.docenteId } },
-      relations: ['usuario'],
-    });
-    if (!docente) throw new NotFoundException('Docente no encontrado');
+  docenteId: number;
+  convocatoriaId: number;
+  programaObjetivo: string;
+}) {
+  const docente = await this.docenteRepo.findOne({
+    where: { usuario: { id: dto.docenteId } },
+    relations: ['usuario'],
+  });
+  if (!docente) throw new NotFoundException('Docente no encontrado');
 
-    const convocatoria = await this.convocatoriaRepo.findOne({
-      where: { id: dto.convocatoriaId },
-    });
-    if (!convocatoria)
-      throw new NotFoundException('Convocatoria no encontrada');
+  const convocatoria = await this.convocatoriaRepo.findOne({
+    where: { id: dto.convocatoriaId },
+  });
+  if (!convocatoria)
+    throw new NotFoundException('Convocatoria no encontrada');
 
-    // 🔹 Validar estado/rango de fechas (del remoto)
-    const hoy = new Date();
-    const fechaInicio = new Date(convocatoria.fechaInicio);
-    const fechaCierre = new Date(convocatoria.fechaCierre);
-    const enRango = fechaInicio <= hoy && hoy <= fechaCierre;
-    console.log({
-  estado: convocatoria.estado,
-  fechaInicio: convocatoria.fechaInicio,
-  fechaCierre: convocatoria.fechaCierre,
-  hoy: new Date().toISOString(),
-});
-    if (convocatoria.estado.toUpperCase() !== 'ABIERTA' || !enRango) {
-      throw new ForbiddenException(
-        'La convocatoria no está abierta para postulación',
-      );
-    }
+  // 🔹 Validar estado/rango de fechas
+  const hoy = new Date();
+  const fechaInicio = new Date(convocatoria.fechaInicio);
+  const fechaCierre = new Date(convocatoria.fechaCierre);
+  const enRango = fechaInicio <= hoy && hoy <= fechaCierre;
 
-    // Validar duplicados
-    const existente = await this.repo.findOne({
-      where: {
-        docente: { id: dto.docenteId },
-        convocatoria: { id: dto.convocatoriaId },
-      },
-    });
-    if (existente) {
-      throw new BadRequestException(
-        'Ya existe una postulación para este docente en esta convocatoria',
-      );
-    }
-
-    // Crear nueva postulación
-    const postulacion = this.repo.create({
-      programaObjetivo: dto.programaObjetivo,
-      docente,
-      convocatoria,
-      estado: EstadoPostulacion.ENVIADA,
-    });
-
-    const nueva = await this.repo.save(postulacion);
-
-    // 📨 Notificar al docente usando enum
-    await this.notificacionService.crear(
-      docente.id,
-      `Tu postulación a la convocatoria "${convocatoria.nombre}" ha sido registrada exitosamente.`,
-      TipoNotificacion.POSTULACION,
+  if (convocatoria.estado.toUpperCase() !== 'ABIERTA' || !enRango) {
+    throw new ForbiddenException(
+      'La convocatoria no está abierta para postulación',
     );
-
-    // 🧑‍💼 Notificar al administrador
-    try {
-      await this.notificacionService.crear(
-        1,
-        `El docente ${docente.nombre} se ha postulado a la convocatoria "${convocatoria.nombre}".`,
-        TipoNotificacion.ADMIN,
-        true,
-      );
-    } catch (error) {
-      console.warn(
-        'No se pudo enviar la notificación al administrador:',
-        error.message,
-      );
-    }
-
-    return nueva;
   }
+
+  // 🔹 Validar duplicados
+  const existente = await this.repo.findOne({
+    where: {
+      docente: { id: docente.id },
+      convocatoria: { id: convocatoria.id },
+    },
+  });
+  if (existente) {
+    throw new BadRequestException(
+      'Ya existe una postulación para este docente en esta convocatoria',
+    );
+  }
+
+  // 🔹 Crear nueva postulación
+  const postulacion = this.repo.create({
+    programaObjetivo: dto.programaObjetivo,
+    docente,
+    convocatoria,
+    estado: EstadoPostulacion.ENVIADA,
+  });
+
+  const nueva = await this.repo.save(postulacion);
+
+  // 🔔 Notificar
+  await this.notificacionService.crear(
+    docente.id,
+    `Tu postulación a la convocatoria "${convocatoria.nombre}" ha sido registrada exitosamente.`,
+    TipoNotificacion.POSTULACION,
+  );
+
+  try {
+    await this.notificacionService.crear(
+      1,
+      `El docente ${docente.nombre} se ha postulado a la convocatoria "${convocatoria.nombre}".`,
+      TipoNotificacion.ADMIN,
+      true,
+    );
+  } catch (error) {
+    console.warn('No se pudo enviar la notificación al administrador:', error.message);
+  }
+
+  // ✅ Retornar respuesta limpia
+  return {
+    programaObjetivo: nueva.programaObjetivo,
+    convocatoriaId: convocatoria.id,
+    docenteId: docente.id,
+    estado: nueva.estado,
+  };
+}
+
 
   async findAll(filters?: any) {
     const qb = this.repo
