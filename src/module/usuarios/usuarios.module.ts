@@ -11,4 +11,4 @@ import { Docente } from '../docentes/entities/docente.entity';
   providers: [UsuariosService],
   exports: [UsuariosService, TypeOrmModule],
 })
-export class UsuariosModule {}
+export class UsuariosModule {}  

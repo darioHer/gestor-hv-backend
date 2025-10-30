@@ -13,10 +13,11 @@ import { Docente } from '../docentes/entities/docente.entity';
 import { Convocatoria } from '../convocatorias/entities/convocatoria.entity';
 import { HistorialPostulacion } from './entities/historial-postulacion.entity';
 
-// 🔹 Mantener ambas importaciones importantes
 import { NotificacionService } from '../notificaciones/noti.service';
 import { TipoNotificacion } from '../notificaciones/entities/noti.entity';
 import { EstadoPostulacion } from '../common/enums/postulacion-estado.enum';
+import { DocumentoPostulacion } from './entities/documento-postulacion.entity';
+import { DocumentType } from '../common/enums/document-type.enum';
 
 @Injectable()
 export class PostulacionService {
@@ -27,10 +28,10 @@ export class PostulacionService {
     private convocatoriaRepo: Repository<Convocatoria>,
     @InjectRepository(HistorialPostulacion)
     private historialRepo: Repository<HistorialPostulacion>,
+    @InjectRepository(DocumentoPostulacion) private documentoRepo: Repository<DocumentoPostulacion>,
     private readonly notificacionService: NotificacionService,
   ) {}
 
-  /** Crear como DOCENTE (id viene del JWT) */
   async createForDocente(docenteId: number, dto: CreatePostulacionDto) {
     return this.createInternal({ docenteId, ...dto });
   }
@@ -52,122 +53,119 @@ export class PostulacionService {
   if (!convocatoria)
     throw new NotFoundException('Convocatoria no encontrada');
 
-  // 🔹 Validar estado/rango de fechas
-  const hoy = new Date();
-  const fechaInicio = new Date(convocatoria.fechaInicio);
-  const fechaCierre = new Date(convocatoria.fechaCierre);
-  const enRango = fechaInicio <= hoy && hoy <= fechaCierre;
-
-  if (convocatoria.estado.toUpperCase() !== 'ABIERTA' || !enRango) {
-    throw new ForbiddenException(
-      'La convocatoria no está abierta para postulación',
-    );
-  }
-
-  // 🔹 Validar duplicados
-  const existente = await this.repo.findOne({
-    where: {
-      docente: { id: docente.id },
-      convocatoria: { id: convocatoria.id },
-    },
-  });
-  if (existente) {
-    throw new BadRequestException(
-      'Ya existe una postulación para este docente en esta convocatoria',
-    );
-  }
-
-  // 🔹 Crear nueva postulación
   const postulacion = this.repo.create({
     programaObjetivo: dto.programaObjetivo,
     docente,
     convocatoria,
-    estado: EstadoPostulacion.ENVIADA,
+    estado: EstadoPostulacion.BORRADOR,
   });
 
   const nueva = await this.repo.save(postulacion);
 
-  // 🔔 Notificar
-  await this.notificacionService.crear(
-    docente.id,
-    `Tu postulación a la convocatoria "${convocatoria.nombre}" ha sido registrada exitosamente.`,
-    TipoNotificacion.POSTULACION,
-  );
+  const historialInicial = this.historialRepo.create({
+    estado: EstadoPostulacion.BORRADOR,
+    postulacion: nueva,
+  });
+  await this.historialRepo.save(historialInicial);
 
-  try {
-    await this.notificacionService.crear(
-      1,
-      `El docente ${docente.nombre} se ha postulado a la convocatoria "${convocatoria.nombre}".`,
-      TipoNotificacion.ADMIN,
-      true,
-    );
-  } catch (error) {
-    console.warn('No se pudo enviar la notificación al administrador:', error.message);
-  }
 
-  // ✅ Retornar respuesta limpia
   return {
+    id: nueva.id, 
     programaObjetivo: nueva.programaObjetivo,
-    convocatoriaId: convocatoria.id,
-    docenteId: docente.id,
     estado: nueva.estado,
+    docente: {
+      id: docente.id,
+      nombre: docente.nombre,
+    },
+    convocatoria: {
+      id: convocatoria.id,
+      nombre: convocatoria.nombre,
+    },
+    fechaCreacion: nueva.fechaCreacion,
   };
 }
 
-
   async findAll(filters?: any) {
-    const qb = this.repo
-      .createQueryBuilder('p')
-      .leftJoinAndSelect('p.docente', 'docente')
-      .leftJoinAndSelect('p.convocatoria', 'convocatoria');
+  const postulaciones = await this.repo.find({
+    relations: ['docente', 'convocatoria'],
+    where: filters
+  });
 
-    if (filters?.estado) {
-      const permitidos = Object.values(EstadoPostulacion);
-      if (!permitidos.includes(filters.estado)) {
-        throw new BadRequestException(
-          `Estado inválido. Usa uno de: ${permitidos.join(', ')}`,
-        );
-      }
-      qb.andWhere('p.estado = :estado', { estado: filters.estado });
-    }
-
-    if (filters?.docenteId) {
-      qb.andWhere('docente.id = :docenteId', {
-        docenteId: Number(filters.docenteId),
-      });
-    }
-
-    if (filters?.convocatoriaId) {
-      qb.andWhere('convocatoria.id = :convocatoriaId', {
-        convocatoriaId: Number(filters.convocatoriaId),
-      });
-    }
-
-    return qb.getMany();
-  }
+  return postulaciones.map(p => ({
+    id: p.id,
+    programaObjetivo: p.programaObjetivo,
+    estado: p.estado,
+    docente: {
+      id: p.docente.id,
+      nombre: p.docente.nombre,
+      identificacion: p.docente.identificacion,
+    },
+    convocatoria: {
+      id: p.convocatoria.id,
+      nombre: p.convocatoria.nombre,
+    },
+    fechaCreacion: p.fechaCreacion,
+    fechaEnvio: p.fechaEnvio,
+  }));
+}
 
   async findByConvocatoria(convocatoriaId: number) {
-    const convocatoria = await this.convocatoriaRepo.findOne({
-      where: { id: convocatoriaId },
-    });
-    if (!convocatoria)
-      throw new NotFoundException('Convocatoria no encontrada');
+  const convocatoria = await this.convocatoriaRepo.findOne({
+    where: { id: convocatoriaId },
+  });
+  if (!convocatoria) throw new NotFoundException('Convocatoria no encontrada');
 
-    return this.repo.find({
-      where: { convocatoria: { id: convocatoriaId } },
-      relations: ['docente', 'convocatoria'],
-    });
-  }
+  const postulaciones = await this.repo.find({
+    where: { convocatoria: { id: convocatoriaId } },
+    relations: ['docente', 'convocatoria'],
+  });
+
+  return postulaciones.map(p => ({
+    id: p.id,
+    programaObjetivo: p.programaObjetivo,
+    estado: p.estado,
+    docente: {
+      id: p.docente.id,
+      nombre: p.docente.nombre,
+      identificacion: p.docente.identificacion,
+      contacto: p.docente.contacto,
+    },
+    convocatoria: {
+      id: p.convocatoria.id,
+      nombre: p.convocatoria.nombre,
+      programa: p.convocatoria.programa,
+    },
+    fechaCreacion: p.fechaCreacion,
+    fechaEnvio: p.fechaEnvio,
+  }));
+}
 
   async findOneWithHistorial(id: number) {
-    const postulacion = await this.repo.findOne({
-      where: { id },
-      relations: ['historial', 'docente', 'convocatoria'],
-    });
-    if (!postulacion)
-      throw new NotFoundException('Postulación no encontrada');
-    return postulacion;
-  }
+  const postulacion = await this.repo.findOne({
+    where: { id },
+    relations: ['historial', 'docente', 'convocatoria'],
+  });
+  if (!postulacion) throw new NotFoundException('Postulación no encontrada');
+  return {
+    id: postulacion.id,
+    programaObjetivo: postulacion.programaObjetivo,
+    estado: postulacion.estado,
+    docente: {
+      id: postulacion.docente.id,
+      nombre: postulacion.docente.nombre,
+      identificacion: postulacion.docente.identificacion,
+      contacto: postulacion.docente.contacto,
+    },
+    convocatoria: {
+      id: postulacion.convocatoria.id,
+      nombre: postulacion.convocatoria.nombre,
+      programa: postulacion.convocatoria.programa,
+    },
+    historial: postulacion.historial, 
+    fechaCreacion: postulacion.fechaCreacion,
+    fechaEnvio: postulacion.fechaEnvio,
+  };
+}
 
   async updateEstado(id: number, nuevoEstado: EstadoPostulacion) {
     const postulacion = await this.repo.findOne({
@@ -193,7 +191,6 @@ export class PostulacionService {
     });
     await this.historialRepo.save(historial);
 
-    // 🔹 Agregamos notificación automática (de tu versión)
     const mensaje = `El estado de tu postulación a la convocatoria "${postulacion.convocatoria.nombre}" cambió a "${nuevoEstado}".`;
     await this.notificacionService.crear(
       postulacion.docente.id,
@@ -203,4 +200,126 @@ export class PostulacionService {
 
     return postulacion;
   }
+
+async enviarPostulacion(id: number, usuarioId: number) {
+  const postulacion = await this.validarPropiedadPostulacion(id, usuarioId);
+  
+  // Validar que tenga todos los documentos requeridos
+  const documentosRequeridos = Object.values(DocumentType);
+  
+  // CARGAR los documentos de la postulación
+  const documentosSubidos = await this.documentoRepo.find({
+    where: { postulacion: { id: postulacion.id } },
+    select: ['tipoDocumento']
+  });
+  
+  const tiposSubidos = documentosSubidos.map(doc => doc.tipoDocumento);
+  const faltantes = documentosRequeridos.filter(req => !tiposSubidos.includes(req));
+  
+  if (faltantes.length > 0) {
+    throw new BadRequestException(`Faltan documentos requeridos: ${faltantes.join(', ')}`);
+  }
+  
+  // Cambiar estado a ENVIADA
+  postulacion.estado = EstadoPostulacion.ENVIADA;
+  postulacion.fechaEnvio = new Date();
+  await this.repo.save(postulacion);
+
+  // CORREGIDO: CREAR REGISTRO EN HISTORIAL
+  const historial = this.historialRepo.create({
+    estado: EstadoPostulacion.ENVIADA,
+    postulacion,
+  });
+  await this.historialRepo.save(historial);
+  
+  // Recargar la postulación con relaciones para la notificación
+  const postulacionCompleta = await this.repo.findOne({
+    where: { id: postulacion.id },
+    relations: ['docente', 'convocatoria']
+  });
+
+  if (!postulacionCompleta) {
+    throw new NotFoundException('No se pudo cargar la postulación después del envío');
+  }
+
+  // Notificar envío
+  await this.notificacionService.crear(
+    postulacionCompleta.docente.id,
+    `¡Tu postulación a "${postulacionCompleta.convocatoria.nombre}" ha sido enviada exitosamente!`,
+    TipoNotificacion.POSTULACION,
+  );
+  
+  return postulacionCompleta;
+}
+
+async uploadDocument(
+  postulacionId: number,
+  usuarioId: number, 
+  tipoDocumento: DocumentType,
+  archivo: Express.Multer.File
+) {
+  const postulacion = await this.validarPropiedadPostulacion(postulacionId, usuarioId);
+  if (postulacion.estado !== EstadoPostulacion.BORRADOR) {
+    throw new BadRequestException(
+      'Solo se pueden subir documentos a postulaciones en estado BORRADOR'
+    );
+  }
+
+  const documentoExistente = await this.documentoRepo.findOne({
+    where: { 
+      postulacion: { id: postulacionId },
+      tipoDocumento: tipoDocumento 
+    }
+  }); 
+  if (documentoExistente) {
+    throw new BadRequestException(
+      `Ya existe un documento de tipo ${tipoDocumento} para esta postulación`
+    );
+  }
+
+  const documento = new DocumentoPostulacion();
+  documento.postulacion = postulacion;
+  documento.tipoDocumento = tipoDocumento;
+  documento.nombreArchivo = archivo.originalname;
+  documento.rutaArchivo = archivo.path;
+  documento.mimeType = archivo.mimetype;
+  documento.tamaño = archivo.size;
+  documento.verificado = false;
+
+  const documentoGuardado = await this.documentoRepo.save(documento);
+
+  return {
+    id: documentoGuardado.id,
+    tipoDocumento: documentoGuardado.tipoDocumento,
+    nombreArchivo: documentoGuardado.nombreArchivo,
+    tamaño: documentoGuardado.tamaño,
+    fechaSubida: documentoGuardado.fechaSubida,
+  };
+}
+
+private async validarPropiedadPostulacion(postulacionId: number, usuarioId: number) {
+  const postulacion = await this.repo.findOne({
+    where: { id: postulacionId },
+    relations: ['docente', 'docente.usuario', 'convocatoria'], 
+  });
+
+  if (!postulacion) {
+    throw new NotFoundException('Postulación no encontrada');
+  }
+
+  if (postulacion.docente.usuario.id !== usuarioId) {
+    throw new ForbiddenException('No tienes permisos para modificar esta postulación');
+  }
+
+  return postulacion;
+}
+
+async getDocumentosByPostulacion(postulacionId: number, usuarioId: number) {
+  await this.validarPropiedadPostulacion(postulacionId, usuarioId);
+  
+  return this.documentoRepo.find({
+    where: { postulacion: { id: postulacionId } },
+    order: { fechaSubida: 'DESC' },
+  });
+}
 }
