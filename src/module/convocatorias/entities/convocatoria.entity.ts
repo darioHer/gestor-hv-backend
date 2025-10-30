@@ -1,20 +1,23 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Postulacion } from '../../postulacion/entities/postulacion.entity';
-
+import { ConvocatoriaEstado } from 'src/module/common/enums/convocatoria-estado.enum';
 
 @Entity('convocatorias')
 export class Convocatoria {
     @PrimaryGeneratedColumn()
     id: number;
+    
+    @Column()
+    nombre: string; 
 
     @Column({ length: 60 })
     tipoVinculacion: string;
 
     @Column({ type: 'date' })
-    fechaInicio: string;
+    fechaInicio: string; // ISO yyyy-mm-dd
 
     @Column({ type: 'date' })
-    fechaCierre: string;
+    fechaCierre: string; // ISO yyyy-mm-dd
 
     @Column({ length: 120 })
     programa: string;
@@ -22,8 +25,8 @@ export class Convocatoria {
     @Column('text', { nullable: true })
     requisitos: string;
 
-    @Column({ type: 'enum', enum: ['abierta', 'cerrada'], default: 'abierta' })
-estado: 'abierta' | 'cerrada';
+    @Column({ type: 'enum', enum: ConvocatoriaEstado, default: ConvocatoriaEstado.ABIERTA })
+    estado: ConvocatoriaEstado;
 
     @OneToMany(() => Postulacion, (p) => p.convocatoria)
     postulaciones: Postulacion[];

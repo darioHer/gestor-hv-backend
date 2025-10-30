@@ -1,18 +1,22 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { Convocatoria } from './entities/convocatoria.entity';
-import { Postulacion } from '../postulacion/entities/postulacion.entity';
 import { ConvocatoriaService } from './convocatoria.service';
 import { ConvocatoriaController } from './convocatoria.controller';
-import { PostulacionController } from '../postulacion/postulacion.controller';
-import { Docente } from '../docentes/entities/docente.entity';
-import { PostulacionService } from '../postulacion/postulacion.service';
-import { HistorialPostulacion } from '../postulacion/entities/historial-postulacion.entity';
-
+import { NotificacionModule } from '../notificaciones/noti.module';
+import { PostulacionModule } from '../postulacion/postulacion.module';
+import { Postulacion } from '../postulacion/entities/postulacion.entity';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Convocatoria, Postulacion, Docente, HistorialPostulacion])],
-    controllers: [ConvocatoriaController, PostulacionController],
-    providers: [ConvocatoriaService, PostulacionService],
+  imports: [
+    TypeOrmModule.forFeature([Convocatoria, Postulacion]),
+    ScheduleModule.forRoot(),
+    forwardRef(() => PostulacionModule),
+    forwardRef(() => NotificacionModule),
+  ],
+  controllers: [ConvocatoriaController],
+  providers: [ConvocatoriaService],
+  exports: [ConvocatoriaService],
 })
-export class ConvocatoriaModule { }
+export class ConvocatoriaModule {}
