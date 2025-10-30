@@ -28,7 +28,7 @@ export class UsuariosService {
       nombre: dto.nombre,
       usuario: dto.usuario,
       password: hash,
-      rol: dto.rol ?? Role.DOCENTE, // Por defecto DOCENTE
+      rol: dto.rol ?? Role.DOCENTE, 
     });
 
     const savedUser = await this.userRepo.save(nuevoUsuario);
@@ -37,7 +37,7 @@ export class UsuariosService {
     if (savedUser.rol === Role.DOCENTE) {
       const docente = this.docenteRepo.create({
         usuario: savedUser,
-        nombre: dto.nombre, // Asegura que no quede vacío
+        nombre: dto.nombre, 
         identificacion: dto.identificacion ?? '',
         contacto: dto.contacto ?? '',
         disponibilidadHoraria: dto.disponibilidadHoraria ?? '',
@@ -48,7 +48,6 @@ export class UsuariosService {
     return savedUser;
   }
 
-  // 🔹 Obtener todos los usuarios
   async findAll() {
     return this.userRepo.find({
       select: ['id', 'nombre', 'usuario', 'rol'],

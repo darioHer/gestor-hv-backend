@@ -7,12 +7,16 @@ import { HistorialPostulacion } from './entities/historial-postulacion.entity';
 import { Docente } from '../docentes/entities/docente.entity';
 import { Convocatoria } from '../convocatorias/entities/convocatoria.entity';
 import { NotificacionModule } from '../notificaciones/noti.module';
+import { DocumentoPostulacion } from './entities/documento-postulacion.entity';
+import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
+      MulterModule.register(),
+      TypeOrmModule.forFeature([
       Postulacion,
       HistorialPostulacion,
+      DocumentoPostulacion,
       Docente,
       Convocatoria,
     ]),

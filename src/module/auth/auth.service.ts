@@ -41,35 +41,42 @@ export class AuthService {
     };
   }
 
-  // ✅ Registrar nuevos usuarios (por defecto DOCENTE)
-  async register(dto: RegisterDto) {
-    const exists = await this.userRepo.findOne({ where: { usuario: dto.usuario } });
-    if (exists) throw new BadRequestException('El usuario ya existe');
+// Registrar nuevos usuarios (por defecto DOCENTE)
+async register(dto: RegisterDto) {
+  // 1️⃣ Crear usuario
+  const usuario = this.userRepo.create({
+    nombre: dto.nombre, // ← 🔥 ESTA LÍNEA ES CLAVE
+    usuario: dto.usuario,
+    password: await bcrypt.hash(dto.password, 10),
+    rol: dto.rol ?? Role.DOCENTE,
+  });
 
-    const hash = await bcrypt.hash(dto.password, 10);
+  await this.userRepo.save(usuario);
 
-    const nuevoUsuario = this.userRepo.create({
+  // 2️⃣ Crear docente automáticamente si es rol docente
+  if (usuario.rol === Role.DOCENTE) {
+    const docente = this.docenteRepo.create({
       nombre: dto.nombre,
-      usuario: dto.usuario,
-      password: hash,
-      rol: dto.rol ?? Role.DOCENTE
+      identificacion: dto.identificacion,
+      contacto: dto.contacto,
+      foto: dto.foto,
+      disponibilidadHoraria: dto.disponibilidadHoraria,
+      usuario,
     });
-
-    const savedUser = await this.userRepo.save(nuevoUsuario);
-
-    // 🔹 Si el usuario registrado es un docente, crea su entrada asociada
-    if (savedUser.rol === Role.DOCENTE) {
-      const nuevoDocente = this.docenteRepo.create({
-        usuario: savedUser, // relación 1:1 con Usuario
-      });
-      await this.docenteRepo.save(nuevoDocente);
-    }
-
-    const { password, ...safeUser } = savedUser;
-    return safeUser;
+    await this.docenteRepo.save(docente);
   }
 
-  // ✅ Buscar usuario por ID
+  // 3️⃣ Respuesta limpia
+  return {
+    message: 'Registro exitoso',
+    usuario: {
+      id: usuario.id,
+      nombre: usuario.nombre,
+      rol: usuario.rol,
+    },
+  };
+}
+  // Buscar usuario por ID
   async findById(id: number) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) throw new UnauthorizedException('No autorizado');

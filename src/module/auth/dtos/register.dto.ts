@@ -1,36 +1,40 @@
 // src/module/auth/dtos/register.dto.ts
-import { IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 import { Role } from 'src/module/common/enums/role.enum';
 
 export class RegisterDto {
+  @IsNotEmpty()
   @IsString()
   nombre: string;
 
+  @IsNotEmpty()
   @IsString()
   usuario: string;
 
+  @IsNotEmpty()
   @IsString()
   @MinLength(6)
   password: string;
 
+  // Este solo se usa si un admin crea usuarios manualmente
   @IsEnum(Role)
   @IsOptional()
   rol?: Role;
 
-  // Campos adicionales (solo aplican para DOCENTE)
-  @IsOptional()
+  // Campos obligatorios para docentes
+  @IsNotEmpty()
   @IsString()
-  identificacion?: string;
+  identificacion: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  contacto?: string;
+  contacto: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   foto?: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  disponibilidadHoraria?: string;
+  disponibilidadHoraria: string;
 }
