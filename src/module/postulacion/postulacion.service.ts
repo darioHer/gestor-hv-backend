@@ -68,6 +68,23 @@ export class PostulacionService {
   });
   await this.historialRepo.save(historialInicial);
 
+  // ✅ ✅ ✅ AGREGAR ESTAS LÍNEAS FALTANTES:
+  
+  // 1. Notificar al DOCENTE
+  await this.notificacionService.crear(
+    docente.id,
+    `Has iniciado tu postulación a "${convocatoria.nombre}". Recuerda subir todos los documentos requeridos.`,
+    TipoNotificacion.POSTULACION,
+    false
+  );
+
+  // 2. Notificar al ADMIN
+  await this.notificacionService.crear(
+    1, // ID del admin
+    `El docente ${docente.nombre} se ha postulado a la convocatoria "${convocatoria.nombre}".`,
+    TipoNotificacion.ADMIN,
+    true
+  );
 
   return {
     id: nueva.id, 
@@ -204,10 +221,8 @@ export class PostulacionService {
 async enviarPostulacion(id: number, usuarioId: number) {
   const postulacion = await this.validarPropiedadPostulacion(id, usuarioId);
   
-  // Validar que tenga todos los documentos requeridos
   const documentosRequeridos = Object.values(DocumentType);
   
-  // CARGAR los documentos de la postulación
   const documentosSubidos = await this.documentoRepo.find({
     where: { postulacion: { id: postulacion.id } },
     select: ['tipoDocumento']
@@ -220,19 +235,16 @@ async enviarPostulacion(id: number, usuarioId: number) {
     throw new BadRequestException(`Faltan documentos requeridos: ${faltantes.join(', ')}`);
   }
   
-  // Cambiar estado a ENVIADA
   postulacion.estado = EstadoPostulacion.ENVIADA;
   postulacion.fechaEnvio = new Date();
   await this.repo.save(postulacion);
 
-  // CORREGIDO: CREAR REGISTRO EN HISTORIAL
   const historial = this.historialRepo.create({
     estado: EstadoPostulacion.ENVIADA,
     postulacion,
   });
   await this.historialRepo.save(historial);
   
-  // Recargar la postulación con relaciones para la notificación
   const postulacionCompleta = await this.repo.findOne({
     where: { id: postulacion.id },
     relations: ['docente', 'convocatoria']
@@ -242,11 +254,19 @@ async enviarPostulacion(id: number, usuarioId: number) {
     throw new NotFoundException('No se pudo cargar la postulación después del envío');
   }
 
-  // Notificar envío
+
   await this.notificacionService.crear(
     postulacionCompleta.docente.id,
     `¡Tu postulación a "${postulacionCompleta.convocatoria.nombre}" ha sido enviada exitosamente!`,
     TipoNotificacion.POSTULACION,
+    false
+  );
+
+  await this.notificacionService.crear(
+    1,
+    `📋 El docente ${postulacionCompleta.docente.nombre} ha completado todos los documentos y su postulación a "${postulacionCompleta.convocatoria.nombre}" está lista para revisión.`,
+    TipoNotificacion.ADMIN,
+    true
   );
   
   return postulacionCompleta;
