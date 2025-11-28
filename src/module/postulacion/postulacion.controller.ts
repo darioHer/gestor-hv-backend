@@ -102,4 +102,12 @@ async getDocumentos(
 ) {
   return this.service.getDocumentosByPostulacion(id, req.user.id);
 }
+
+@Get('mias')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles(Role.DOCENTE)
+getMisPostulaciones(@Request() req) {
+  return this.service.findByDocente(req.user.id);
+}
+
 }

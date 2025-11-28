@@ -28,5 +28,4 @@ async function bootstrap() {
   console.log(`🚀 Servidor en ejecución: http://localhost:${port}/api`);
   console.log(`✅ CORS configurado para: http://localhost:5173`);
 }
-
 bootstrap();

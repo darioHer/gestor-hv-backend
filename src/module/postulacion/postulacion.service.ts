@@ -67,7 +67,6 @@ export class PostulacionService {
   });
   await this.historialRepo.save(historialInicial);
 
-  // ✅ ✅ ✅ AGREGAR ESTAS LÍNEAS FALTANTES:
   
   // 1. Notificar al DOCENTE
   await this.notificacionService.crear(
@@ -182,6 +181,39 @@ export class PostulacionService {
     fechaEnvio: postulacion.fechaEnvio,
   };
 }
+
+async findByDocente(usuarioId: number) {
+  // Buscar el docente asociado al usuario
+  const docente = await this.docenteRepo.findOne({
+    where: { usuario: { id: usuarioId } },
+    relations: ['usuario'],
+  });
+
+  if (!docente) {
+    throw new NotFoundException('Docente no encontrado');
+  }
+
+  // Buscar postulaciones del docente
+  const postulaciones = await this.repo.find({
+    where: { docente: { id: docente.id } },
+    relations: ['convocatoria'],
+    order: { fechaCreacion: 'DESC' },
+  });
+
+  return postulaciones.map(p => ({
+    id: p.id,
+    programaObjetivo: p.programaObjetivo,
+    estado: p.estado,
+    convocatoria: {
+      id: p.convocatoria.id,
+      nombre: p.convocatoria.nombre,
+      programa: p.convocatoria.programa,
+    },
+    fechaCreacion: p.fechaCreacion,
+    fechaEnvio: p.fechaEnvio,
+  }));
+}
+
 
   async updateEstado(id: number, nuevoEstado: EstadoPostulacion) {
     const postulacion = await this.repo.findOne({
