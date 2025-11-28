@@ -1,29 +1,32 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { AuthService } from './module/auth/auth.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Prefijo global
+  app.enableCors({
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    credentials: true,
+  });
+
   app.setGlobalPrefix('api');
 
-  // Configuración global de validaciones DTOs
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // elimina propiedades no declaradas en DTOs
-      forbidNonWhitelisted: true, // lanza error si se envía algo extra
-      transform: true, // convierte tipos (p. ej. string -> number)
+      whitelist: true,
+      forbidNonWhitelisted: true, 
+      transform: true,
       transformOptions: { enableImplicitConversion: true },
     }),
   );
 
-
-  // Puerto y mensaje de inicio
   const port = process.env.PORT || 3000;
   await app.listen(port);
   console.log(`🚀 Servidor en ejecución: http://localhost:${port}/api`);
+  console.log(`✅ CORS configurado para: http://localhost:5173`);
 }
 
 bootstrap();

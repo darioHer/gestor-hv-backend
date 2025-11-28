@@ -21,8 +21,6 @@ export class NotificacionService {
     esAdmin = false
   ) {
     let docente: Docente | null = null;
-
-  
     if (!esAdmin) {
       docente = await this.docenteRepo.findOne({ 
         where: { id: usuarioId } 
@@ -41,7 +39,6 @@ export class NotificacionService {
     });
 
     const notificacionGuardada = await this.notificacionRepo.save(notificacion);
-    console.log(`✅ Notificación creada (admin: ${esAdmin}): ${mensaje}`);
     return notificacionGuardada;
   }
   
@@ -57,7 +54,6 @@ async crearMasiva(
   });
 
   const notificacionGuardada = await this.notificacionRepo.save(notificacion);
-  console.log(`✅ Notificación MASIVA creada: ${mensaje}`);
   return notificacionGuardada;
 }
 

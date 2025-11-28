@@ -35,7 +35,6 @@ export class PostulacionService {
   async createForDocente(docenteId: number, dto: CreatePostulacionDto) {
     return this.createInternal({ docenteId, ...dto });
   }
-
   private async createInternal(dto: {
   docenteId: number;
   convocatoriaId: number;
