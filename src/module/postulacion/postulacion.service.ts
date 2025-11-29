@@ -35,7 +35,6 @@ export class PostulacionService {
   async createForDocente(docenteId: number, dto: CreatePostulacionDto) {
     return this.createInternal({ docenteId, ...dto });
   }
-
   private async createInternal(dto: {
   docenteId: number;
   convocatoriaId: number;
@@ -68,6 +67,22 @@ export class PostulacionService {
   });
   await this.historialRepo.save(historialInicial);
 
+  
+  // 1. Notificar al DOCENTE
+  await this.notificacionService.crear(
+    docente.id,
+    `Has iniciado tu postulación a "${convocatoria.nombre}". Recuerda subir todos los documentos requeridos.`,
+    TipoNotificacion.POSTULACION,
+    false
+  );
+
+  // 2. Notificar al ADMIN
+  await this.notificacionService.crear(
+    1, // ID del admin
+    `El docente ${docente.nombre} se ha postulado a la convocatoria "${convocatoria.nombre}".`,
+    TipoNotificacion.ADMIN,
+    true
+  );
 
   return {
     id: nueva.id, 
@@ -167,6 +182,39 @@ export class PostulacionService {
   };
 }
 
+async findByDocente(usuarioId: number) {
+  // Buscar el docente asociado al usuario
+  const docente = await this.docenteRepo.findOne({
+    where: { usuario: { id: usuarioId } },
+    relations: ['usuario'],
+  });
+
+  if (!docente) {
+    throw new NotFoundException('Docente no encontrado');
+  }
+
+  // Buscar postulaciones del docente
+  const postulaciones = await this.repo.find({
+    where: { docente: { id: docente.id } },
+    relations: ['convocatoria'],
+    order: { fechaCreacion: 'DESC' },
+  });
+
+  return postulaciones.map(p => ({
+    id: p.id,
+    programaObjetivo: p.programaObjetivo,
+    estado: p.estado,
+    convocatoria: {
+      id: p.convocatoria.id,
+      nombre: p.convocatoria.nombre,
+      programa: p.convocatoria.programa,
+    },
+    fechaCreacion: p.fechaCreacion,
+    fechaEnvio: p.fechaEnvio,
+  }));
+}
+
+
   async updateEstado(id: number, nuevoEstado: EstadoPostulacion) {
     const postulacion = await this.repo.findOne({
       where: { id },
@@ -204,10 +252,8 @@ export class PostulacionService {
 async enviarPostulacion(id: number, usuarioId: number) {
   const postulacion = await this.validarPropiedadPostulacion(id, usuarioId);
   
-  // Validar que tenga todos los documentos requeridos
   const documentosRequeridos = Object.values(DocumentType);
   
-  // CARGAR los documentos de la postulación
   const documentosSubidos = await this.documentoRepo.find({
     where: { postulacion: { id: postulacion.id } },
     select: ['tipoDocumento']
@@ -220,19 +266,16 @@ async enviarPostulacion(id: number, usuarioId: number) {
     throw new BadRequestException(`Faltan documentos requeridos: ${faltantes.join(', ')}`);
   }
   
-  // Cambiar estado a ENVIADA
   postulacion.estado = EstadoPostulacion.ENVIADA;
   postulacion.fechaEnvio = new Date();
   await this.repo.save(postulacion);
 
-  // CORREGIDO: CREAR REGISTRO EN HISTORIAL
   const historial = this.historialRepo.create({
     estado: EstadoPostulacion.ENVIADA,
     postulacion,
   });
   await this.historialRepo.save(historial);
   
-  // Recargar la postulación con relaciones para la notificación
   const postulacionCompleta = await this.repo.findOne({
     where: { id: postulacion.id },
     relations: ['docente', 'convocatoria']
@@ -242,11 +285,19 @@ async enviarPostulacion(id: number, usuarioId: number) {
     throw new NotFoundException('No se pudo cargar la postulación después del envío');
   }
 
-  // Notificar envío
+
   await this.notificacionService.crear(
     postulacionCompleta.docente.id,
     `¡Tu postulación a "${postulacionCompleta.convocatoria.nombre}" ha sido enviada exitosamente!`,
     TipoNotificacion.POSTULACION,
+    false
+  );
+
+  await this.notificacionService.crear(
+    1,
+    `📋 El docente ${postulacionCompleta.docente.nombre} ha completado todos los documentos y su postulación a "${postulacionCompleta.convocatoria.nombre}" está lista para revisión.`,
+    TipoNotificacion.ADMIN,
+    true
   );
   
   return postulacionCompleta;

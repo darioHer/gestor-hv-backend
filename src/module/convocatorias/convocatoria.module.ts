@@ -7,10 +7,11 @@ import { ConvocatoriaController } from './convocatoria.controller';
 import { NotificacionModule } from '../notificaciones/noti.module';
 import { PostulacionModule } from '../postulacion/postulacion.module';
 import { Postulacion } from '../postulacion/entities/postulacion.entity';
+import { Docente } from '../docentes/entities/docente.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Convocatoria, Postulacion]),
+    TypeOrmModule.forFeature([Convocatoria, Postulacion, Docente]),
     ScheduleModule.forRoot(),
     forwardRef(() => PostulacionModule),
     forwardRef(() => NotificacionModule),
