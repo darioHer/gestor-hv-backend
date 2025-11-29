@@ -1,23 +1,26 @@
 import { IsDateString, IsIn, IsOptional, IsString, Length, Matches, MaxLength, IsUrl } from 'class-validator';
 import { TipoEvidencia } from '../enums/tipo-evidencia.enum';
 
-export class CreateEvidenciaDto {
+export class UpdateEvidenciaDto {
+    @IsOptional()
     @IsIn(Object.values(TipoEvidencia))
-    tipo: TipoEvidencia;
+    tipo?: TipoEvidencia;
 
+    @IsOptional()
     @IsString()
     @MaxLength(160)
-    nombre: string;
+    nombre?: string;
 
+    @IsOptional()
     @IsUrl()
     @MaxLength(300)
-    url: string;
+    url?: string;
 
-    // si lo envías desde FE, lo validamos; idealmente lo calcula el backend cuando hay archivo
+    @IsOptional()
     @IsString()
     @Length(64, 64)
     @Matches(/^[a-f0-9]{64}$/i)
-    sha256: string;
+    sha256?: string;
 
     @IsOptional()
     @IsDateString()

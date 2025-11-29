@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { PerfilService } from './perfil.service';
 import { PerfilController } from './perfil.controller';
+import { PerfilService } from './perfil.service';
 import { PerfilDocente } from './entities/perfil-docente.entity';
 import { PerfilDestacado } from './entities/perfil-destacado.entity';
 import { PerfilEvidencia } from './entities/perfil-evidencia.entity';

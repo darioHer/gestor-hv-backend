@@ -5,81 +5,79 @@ import * as bcrypt from 'bcrypt';
 import { Usuario } from './entities/usuario.entity';
 import { RegisterDto } from '../auth/dtos/register.dto';
 import { Role } from '../common/enums/role.enum';
-import { Docente } from '../docentes/entities/docente.entity';
 
 @Injectable()
 export class UsuariosService {
   constructor(
     @InjectRepository(Usuario)
     private readonly userRepo: Repository<Usuario>,
-
-    @InjectRepository(Docente)
-    private readonly docenteRepo: Repository<Docente>,
   ) {}
 
-  // 🔹 Crear un nuevo usuario
-   async create(dto: RegisterDto) {
-    const exists = await this.userRepo.findOne({ where: { usuario: dto.usuario } });
+  // Crear un nuevo usuario (DTO simplificado)
+  async create(dto: RegisterDto) {
+    const username = dto.usuario.trim().toLowerCase();
+
+    const exists = await this.userRepo.findOne({ where: { usuario: username } });
     if (exists) throw new BadRequestException('El usuario ya existe');
 
     const hash = await bcrypt.hash(dto.password, 10);
 
     const nuevoUsuario = this.userRepo.create({
       nombre: dto.nombre,
-      usuario: dto.usuario,
+      usuario: username,
       password: hash,
-      rol: dto.rol ?? Role.DOCENTE, 
+      rol: dto.rol ?? Role.DOCENTE,
     });
 
-    const savedUser = await this.userRepo.save(nuevoUsuario);
-
-    // 🧩 Si el rol es DOCENTE, crear automáticamente su registro en la tabla docentes
-    if (savedUser.rol === Role.DOCENTE) {
-      const docente = this.docenteRepo.create({
-        usuario: savedUser,
-        nombre: dto.nombre, 
-        identificacion: dto.identificacion ?? '',
-        contacto: dto.contacto ?? '',
-        disponibilidadHoraria: dto.disponibilidadHoraria ?? '',
-      });
-      await this.docenteRepo.save(docente);
-    }
-
-    return savedUser;
+    const saved = await this.userRepo.save(nuevoUsuario);
+    // Retornar sin password
+    const { password: _omit, ...safe } = saved;
+    return safe;
   }
 
   async findAll() {
+    // Selección segura por defecto (sin password)
     return this.userRepo.find({
       select: ['id', 'nombre', 'usuario', 'rol'],
+      order: { id: 'ASC' },
     });
   }
 
-  // 🔹 Obtener un usuario por ID
   async findOne(id: number) {
-    const user = await this.userRepo.findOne({ where: { id } });
+    const user = await this.userRepo.findOne({
+      where: { id },
+      select: ['id', 'nombre', 'usuario', 'rol'], // seguro
+    });
     if (!user) throw new NotFoundException('Usuario no encontrado');
     return user;
   }
 
-  // 🔹 Actualizar un usuario
   async update(id: number, dto: Partial<RegisterDto>) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) throw new NotFoundException('Usuario no encontrado');
 
-    if (dto.usuario && dto.usuario !== user.usuario) {
-      const exists = await this.userRepo.findOne({ where: { usuario: dto.usuario } });
+    if (dto.usuario && dto.usuario.trim().toLowerCase() !== user.usuario) {
+      const nextUsername = dto.usuario.trim().toLowerCase();
+      const exists = await this.userRepo.findOne({ where: { usuario: nextUsername } });
       if (exists) throw new BadRequestException('Ya existe un usuario con ese nombre');
+      user.usuario = nextUsername;
     }
+
+    if (dto.nombre) user.nombre = dto.nombre;
 
     if (dto.password) {
-      dto.password = await bcrypt.hash(dto.password, 10);
+      user.password = await bcrypt.hash(dto.password, 10);
     }
 
-    Object.assign(user, dto);
-    return this.userRepo.save(user);
+    if (dto.rol) {
+      user.rol = dto.rol as Role;
+    }
+
+    const saved = await this.userRepo.save(user);
+    const { password: _omit, ...safe } = saved;
+    return safe;
   }
 
-  // 🔹 Eliminar un usuario
   async delete(id: number) {
     const result = await this.userRepo.delete(id);
     if (result.affected === 0) throw new NotFoundException('Usuario no encontrado');

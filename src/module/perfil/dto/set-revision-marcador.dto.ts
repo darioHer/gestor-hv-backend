@@ -1,6 +1,7 @@
 import { IsIn } from 'class-validator';
+import { MarcadorRevision } from '../enums/marcador.enum';
 
 export class SetRevisionMarcadorDto {
-    @IsIn(['FAVORITO', 'DESCARTAR', 'OBSERVAR'])
-    marcador: 'FAVORITO' | 'DESCARTAR' | 'OBSERVAR';
+    @IsIn(Object.values(MarcadorRevision))
+    marcador: MarcadorRevision;
 }

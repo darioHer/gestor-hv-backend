@@ -1,9 +1,10 @@
 import { IsOptional, IsString, MaxLength, IsUrl } from 'class-validator';
 
-export class CreateDestacadoDto {
+export class UpdateDestacadoDto {
+    @IsOptional()
     @IsString()
     @MaxLength(140)
-    titulo: string;
+    titulo?: string;
 
     @IsOptional()
     @IsString()

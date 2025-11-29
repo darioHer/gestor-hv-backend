@@ -1,7 +1,13 @@
-import { IsOptional, IsString, IsIn, IsInt } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ModalidadPreferida } from '../enums/modalidad.enum';
 
 export class UpsertPerfilDto {
-    @IsInt() user_id: number;
-    @IsOptional() @IsString() resumen?: string;
-    @IsOptional() @IsIn(['presencial', 'virtual', 'mixta']) modalidadPreferida?: string;
+    @IsOptional()
+    @IsString()
+    @MaxLength(160)
+    resumen?: string;
+
+    @IsOptional()
+    @IsIn(Object.values(ModalidadPreferida))
+    modalidadPreferida?: ModalidadPreferida;
 }

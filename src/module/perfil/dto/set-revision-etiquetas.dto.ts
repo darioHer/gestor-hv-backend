@@ -1,5 +1,9 @@
-import { IsArray, IsString } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsString, MaxLength } from 'class-validator';
 
 export class SetRevisionEtiquetasDto {
-    @IsArray() @IsString({ each: true }) etiquetas: string[];
+    @IsArray()
+    @ArrayMaxSize(20)
+    @IsString({ each: true })
+    @MaxLength(40, { each: true })
+    etiquetas: string[];
 }
