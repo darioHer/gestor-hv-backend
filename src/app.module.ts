@@ -30,7 +30,7 @@ import { NotificacionModule } from './module/notificaciones/noti.module';
     // dominios
     DocenteModule,
     ConvocatoriaModule,
-    PostulacionModule,  // asegúrate de exponer service/controller aquí
+    PostulacionModule,  
     EvaluacionModule,
     UsuariosModule,
     AuthModule,

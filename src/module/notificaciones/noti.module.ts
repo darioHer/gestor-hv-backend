@@ -12,6 +12,6 @@ import { PostulacionModule } from '../postulacion/postulacion.module';
 ],
   providers: [NotificacionService],
   controllers: [NotificacionController],
-  exports: [NotificacionService], // 👈 Para usarlo en otros módulos (como PostulacionService)
+  exports: [NotificacionService], 
 })
 export class NotificacionModule {}

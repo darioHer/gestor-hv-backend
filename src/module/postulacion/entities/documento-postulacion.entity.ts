@@ -24,7 +24,7 @@ export class DocumentoPostulacion {
   mimeType: string;
 
   @Column({ type: 'int' })
-  tamaño: number; // en bytes
+  tamaño: number; 
 
   @Column({ default: false })
   verificado: boolean;

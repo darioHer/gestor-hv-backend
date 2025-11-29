@@ -1,98 +1,86 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🧾 Gestor de Hojas de Vida — Instituto Tecnológico del Putumayo
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## 📘 Descripción General
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+El **Gestor de Hojas de Vida** es una plataforma desarrollada para optimizar el proceso de **postulación, evaluación y vinculación de docentes ocasionales** en el Instituto Tecnológico del Putumayo.
 
-## Description
+Este sistema centraliza la gestión de convocatorias, permite a los aspirantes registrar y actualizar sus hojas de vida, y facilita al comité académico la revisión, evaluación y selección de candidatos, garantizando **transparencia, trazabilidad y eficiencia** en el proceso.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+La aplicación está conformada por un **backend** desarrollado en **NestJS**, con conexión a una base de datos **MySQL**, y un **frontend** en **Vue 3 + Pinia + TailwindCSS**.
 
-## Project setup
+---
+
+## 👥 Integrantes del Proyecto
+
+| Nombre | 
+|:-------|
+| **Harold Meses** | 
+| **Tatiana Díaz** | 
+| **Hernán Flórez** |
+
+---
+
+## 🧠 Objetivo del Proyecto
+
+Desarrollar un sistema institucional que:
+- Digitalice el proceso de **convocatorias docentes**.
+- Permita la **postulación en línea** mediante la carga de hojas de vida y documentos requeridos.
+- Automatice la **evaluación y calificación de aspirantes**.
+- Genere **informes y listados** de elegibles conforme a los criterios definidos por la institución.
+
+---
+
+## ⚙️ Tecnologías Utilizadas
+
+### Backend
+- **NestJS** (Framework principal)
+- **TypeORM** (ORM)
+- **MySQL** (Base de datos relacional)
+- **JWT (JSON Web Tokens)** para autenticación y control de roles
+- **Multer** para carga y gestión de documentos PDF
+
+### Frontend
+- **Vue 3 + Vite**
+- **Pinia (State Management)**
+- **TailwindCSS (Diseño responsivo)**
+- **Axios** (consumo de API REST)
+
+---
+
+## 🔐 Roles de Usuario
+
+| Rol | Descripción |
+|-----|--------------|
+| **ADMIN** | Gestiona usuarios, docentes y convocatorias. |
+| **DOCENTE** | Registra su hoja de vida y se postula a convocatorias. |
+| **COMITÉ** | Evalúa postulaciones y emite resultados. |
+
+---
+
+## 🧩 Módulos Principales del Backend
+
+1. **Auth** → Registro, login y control de acceso mediante JWT.  
+2. **Usuarios** → Gestión de usuarios y roles del sistema.  
+3. **Docentes** → Información académica y profesional del docente.  
+4. **Convocatorias** → Creación y publicación de convocatorias docentes.  
+5. **Postulaciones** → Registro y carga de documentos del aspirante.  
+6. **Evaluaciones** → Calificación y consolidación de resultados.  
+7. **Notificaciones** → Comunicación automática con los aspirantes.
+
+---
+
+## 🚀 Instalación y Ejecución del Backend
 
 ```bash
-$ npm install
-```
+# Clonar el repositorio
+git clone https://github.com/darioHer/gestor-hv-backend.git
+cd gestor-hv-backend
 
-## Compile and run the project
+# Instalar dependencias
+npm install
 
-```bash
-# development
-$ npm run start
+# Configurar variables de entorno (.env)
+cp .env.example .env
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+# Ejecutar servidor de desarrollo
+npm run start:dev

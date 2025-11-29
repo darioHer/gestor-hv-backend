@@ -21,34 +21,95 @@ export class NotificacionService {
     esAdmin = false
   ) {
     let docente: Docente | null = null;
-
-docente = await this.docenteRepo.findOne({ where: { id: usuarioId } });
-
     if (!esAdmin) {
-      docente = await this.docenteRepo.findOne({ where: { id: usuarioId } });
-      if (!docente) throw new NotFoundException(`No se encontró el docente con ID ${usuarioId}`);
+      docente = await this.docenteRepo.findOne({ 
+        where: { id: usuarioId } 
+      });
+      
+      if (!docente) {
+        throw new NotFoundException(`No se encontró el docente con ID ${usuarioId}`);
+      }
     }
 
     const notificacion = this.notificacionRepo.create({
       mensaje,
       tipo,
       leida: false,
-      docente: docente || null,
+      docente: docente, 
     });
 
-    return await this.notificacionRepo.save(notificacion);
+    const notificacionGuardada = await this.notificacionRepo.save(notificacion);
+    return notificacionGuardada;
   }
+  
+async crearMasiva(
+  mensaje: string,
+  tipo: TipoNotificacion,
+) {
+  const notificacion = this.notificacionRepo.create({
+    mensaje,
+    tipo,
+    leida: false,
+    docente: null, 
+  });
+
+  const notificacionGuardada = await this.notificacionRepo.save(notificacion);
+  return notificacionGuardada;
+}
 
   async findAll() {
-    return await this.notificacionRepo.find({ order: { id: 'DESC' } });
-  }
+  const notificaciones = await this.notificacionRepo.find({
+    relations: ['docente'],
+    order: { id: 'DESC' }
+  });
+
+  return notificaciones.map(noti => ({
+    id: noti.id,
+    mensaje: noti.mensaje,
+    tipo: noti.tipo,
+    leida: noti.leida,
+    fechaCreacion: noti.createdAt,
+    docente: noti.docente ? {
+      id: noti.docente.id,
+      nombre: noti.docente.nombre
+    } : null
+  }));
+}
 
   async findByDocente(docenteId: number) {
-    return await this.notificacionRepo.find({
-      where: { docente: { id: docenteId } },
-      order: { id: 'DESC' },
-    });
-  }
+  const notificaciones = await this.notificacionRepo.find({
+    where: { docente: { id: docenteId } },
+    relations: ['docente'],
+    order: { id: 'DESC' },
+  });
+
+  return notificaciones.map(noti => ({
+    id: noti.id,
+    mensaje: noti.mensaje,
+    tipo: noti.tipo,
+    leida: noti.leida,
+    fechaCreacion: noti.createdAt
+  }));
+}
+
+  async findForAdmin() {
+  const notificaciones = await this.notificacionRepo.find({
+    relations: ['docente'],
+    order: { id: 'DESC' },
+  });
+
+  return notificaciones.map(noti => ({
+    id: noti.id,
+    mensaje: noti.mensaje,
+    tipo: noti.tipo,
+    leida: noti.leida,
+    fechaCreacion: noti.createdAt,
+    docente: noti.docente ? {
+      id: noti.docente.id,
+      nombre: noti.docente.nombre
+    } : null
+  }));
+}
 
   async marcarLeida(id: number) {
     const notificacion = await this.notificacionRepo.findOne({ where: { id } });
